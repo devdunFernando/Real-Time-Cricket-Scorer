@@ -1,1 +1,1 @@
-# Real-Time-Cricket-Scorer
+# real-TimeCricketScorer

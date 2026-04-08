@@ -1,0 +1,1798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>LiveScore Cricket</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+</head>
+<body style="margin:0;padding:0;background:#060c17;">
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef } = React;
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TEAM DATA
+// ═══════════════════════════════════════════════════════════════════════════════
+// Squads reflect the most recent 2025-26 international squads (T20 World Cup 2026, latest ODI & Test series)
+const ALL_TEAMS = {
+  INDIA: {
+    name:"India", flag:"🇮🇳", color:"#3b9eff",
+    // Test: Gill(c), Pant(wk/vc), Jaiswal, KL Rahul, Sai Sudharsan, Jadeja, W.Sundar, Bumrah, Siraj, Axar, Nitish Reddy
+    // ODI: Gill(c), Kohli, Jaiswal, Shreyas Iyer, KL Rahul(wk), W.Sundar, Axar, Kuldeep, Siraj, Arshdeep, Bumrah
+    // T20: SKY(c), Abhishek, Tilak Varma, Sanju Samson(wk), Hardik, Dube, Axar, Varun, Bumrah, Arshdeep, Rinku
+    players:["Shubman Gill","Yashasvi Jaiswal","Virat Kohli","Shreyas Iyer","KL Rahul (wk)","Rishabh Pant (wk)","Ravindra Jadeja","Axar Patel","Washington Sundar","Jasprit Bumrah","Mohammed Siraj"],
+    wkIdx:4
+  },
+  AUSTRALIA: {
+    name:"Australia", flag:"🇦🇺", color:"#F9A825",
+    // Test: Smith, Khawaja, Labuschagne, Head, Green, Carey(wk), Starc, Cummins(c), Lyon, Hazlewood, Inglis
+    // ODI: Marsh(c), Head, Smith, Renshaw, Inglis(wk), Maxwell, Green, Stoinis, Zampa, Starc, Hazlewood
+    // T20 WC 2026: Marsh(c), Bartlett, Connolly, Tim David, Dwarshuis, Green, Ellis, Head, Inglis(wk), Kuhnemann, Maxwell, Renshaw, Stoinis, Zampa, Smith
+    players:["Travis Head","Mitchell Marsh","Steve Smith","Matthew Renshaw","Josh Inglis (wk)","Glenn Maxwell","Cameron Green","Marcus Stoinis","Adam Zampa","Mitchell Starc","Pat Cummins"],
+    wkIdx:4
+  },
+  ENGLAND: {
+    name:"England", flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿", color:"#C62828",
+    // Test: Crawley, Duckett, Pope, Root, Brook(c), Stokes, Bairstow(wk), Woakes, Wood, Atkinson, Tongue
+    // ODI: Brook(c), Salt(wk), Duckett, Root, Bethell, Buttler, Curran, Rashid, Jacks, Archer, Wood
+    // T20 WC 2026: Brook(c), Ahmed, Archer, Banton, Bethell, Buttler(wk), Curran, Dawson, Duckett, Jacks, Overton, Rashid, Salt, Tongue, Wood
+    players:["Zak Crawley","Ben Duckett","Ollie Pope","Joe Root","Harry Brook","Ben Stokes","Jos Buttler (wk)","Chris Woakes","Mark Wood","Brydon Carse","Gus Atkinson"],
+    wkIdx:6
+  },
+  PAKISTAN: {
+    name:"Pakistan", flag:"🇵🇰", color:"#2E7D32",
+    // Test: Shan Masood(c), Abdullah Shafique, Saim Ayub, Babar Azam, Saud Shakeel, Salman Agha, Mohammad Rizwan(wk), Shaheen, Naseem, Haris Rauf, Noman Ali
+    // ODI/T20 WC 2026: Salman Agha(c), Babar, Saim Ayub, Fakhar Zaman, Naseem, Shaheen, Shadab, Nawaz, Abrar, Usman Khan, Usman Tariq
+    players:["Babar Azam","Saim Ayub","Mohammad Rizwan (wk)","Saud Shakeel","Salman Ali Agha","Shadab Khan","Mohammad Nawaz","Shaheen Shah Afridi","Naseem Shah","Haris Rauf","Abrar Ahmed"],
+    wkIdx:2
+  },
+  "SOUTH AFRICA": {
+    name:"South Africa", flag:"🇿🇦", color:"#006B3C",
+    // Test: Dean Elgar(ret), Markram(c), Bedingham, Rickelton, Klaasen(wk), Miller, Jansen, Rabada, Nortje, Ngidi, Maharaj
+    // ODI: Markram(c), de Kock(wk), Stubbs, Miller, Brevis, Rickelton, Jansen, Rabada, Nortje, Maharaj, Shamsi
+    // T20 WC 2026: Markram(c), Bosch, Brevis, de Kock(wk), Jansen, Linde, Maharaj, Maphaka, Miller, Ngidi, Nortje, Rabada, Rickelton, J.Smith, Stubbs
+    players:["Aiden Markram","Ryan Rickelton","Quinton de Kock (wk)","David Bedingham","Tristan Stubbs","David Miller","Marco Jansen","Kagiso Rabada","Anrich Nortje","Lungi Ngidi","Keshav Maharaj"],
+    wkIdx:2
+  },
+  "NEW ZEALAND": {
+    name:"New Zealand", flag:"🇳🇿", color:"#000000",
+    // Test: Latham(c), Conway(wk), Williamson, Mitchell, Phillips, Blundell, Southee, Henry, Ferguson, Jamieson, Santner
+    // ODI: Santner(c), Allen, Conway(wk), Williamson, Mitchell, Phillips, Neesham, Henry, Ferguson, Jamieson, Duffy
+    // T20 WC 2026: Santner(c), Allen, Chapman, Conway(wk), Duffy, Ferguson, Henry, Jamieson, Mitchell, Neesham, Phillips, Ravindra, Seifert, Sodhi, McConchie
+    players:["Mitchell Santner","Finn Allen","Devon Conway (wk)","Daryl Mitchell","Glenn Phillips","Rachin Ravindra","Kyle Jamieson","James Neesham","Matt Henry","Lockie Ferguson","Ish Sodhi"],
+    wkIdx:2
+  },
+  "SRI LANKA": {
+    name:"Sri Lanka", flag:"🇱🇰", color:"#1A237E",
+    // Test: Nishan Madushka, Pathum Nissanka, Kusal Mendis(wk), Dinesh Chandimal, Dhananjaya de Silva(C), Kamindu Mendis, Sonal Dinusha, Ramesh Mendis, Prabath Jayasooriya, Vishwa Fernando, Ashitha Fernando
+    // ODI : kamil Mishara, Pathum Nissanka, Kusal Mendis(wk), Pavan Rathnayaka, Janith Liyanage, Dasun Shanaka(C), Dunith Wellalage, Dasun Shanaka, Wanindu Hasaranga, Dushmantha Chameera, Ashitha Fernando  
+    // T20 : Pathum Nissanka, Kusal Mendis(wk), K.J.Perera, Pavan Rathnayaka, Kamindu Mendis, Janith Liyanage, Dunith Wellalage, Dasun Shanaka, Wanidu Hasaranga, Mahesh Theekshana, Dushmantha Chameera
+    players:["Pathum Nissanka","Kusal Mendis (wk)","Kamindu Mendis","Charith Asalanka","Dasun Shanaka","Wanindu Hasaranga","Dunith Wellalage","Maheesh Theekshana","Dushmantha Chameera","Matheesha Pathirana","Dilshan Madushanka"],
+    wkIdx:1
+  },
+  "WEST INDIES": {
+    name:"West Indies", flag:"🏝️", color:"#8B0000",
+    // Test: Brathwaite(c), Campbell, Blackwood, Brooks, Da Silva(wk), Holder, Roach, Joseph, Seales, Motie, Chase
+    // T20 WC 2026: Hope(c), Charles, Chase, Forde, Hetmyer, Holder, Hosein, Joseph, King, Motie, Powell, Rutherford, Sampson, Seales, Shepherd
+    players:["Shai Hope (wk)","Brandon King","Johnson Charles","Roston Chase","Rovman Powell","Shimron Hetmyer","Jason Holder","Romario Shepherd","Shamar Joseph","Gudakesh Motie","Jayden Seales"],
+    wkIdx:0
+  },
+  BANGLADESH: {
+    name:"Bangladesh", flag:"🇧🇩", color:"#006A4E",
+    // Test/ODI: Najmul Hossain Shanto(c), Litton Das(wk), Zakir Hasan, Mominul Haque, Mushfiqur Rahim, Mehidy Hasan, Shakib Al Hasan, Taijul Islam, Taskin Ahmed, Mustafizur Rahman, Shoriful Islam
+    players:["Tanzid Hasan","Litton Das (wk)","Najmul Hossain Shanto","Towhid Hridoy","Mushfiqur Rahim","Mehidy Hasan Miraz","Shakib Al Hasan","Taijul Islam","Taskin Ahmed","Mustafizur Rahman","Shoriful Islam"],
+    wkIdx:1
+  },
+  AFGHANISTAN: {
+    name:"Afghanistan", flag:"🇦🇫", color:"#0D47A1",
+    // T20 WC 2026: Rashid Khan(c), Ibrahim Zadran, Gurbaz(wk), Omarzai, Nabi, Naib, Mujeeb, Noor Ahmad, Farooqi, Ahmadzai, Rasooli, Kamal, Ishaq, Atal, Zia Sharifi
+    players:["Ibrahim Zadran","Rahmanullah Gurbaz (wk)","Sediqullah Atal","Azmatullah Omarzai","Mohammad Nabi","Gulbadin Naib","Rashid Khan","Mujeeb Ur Rahman","Noor Ahmad","Fazalhaq Farooqi","Abdullah Ahmadzai"],
+    wkIdx:1
+  },
+  ZIMBABWE: {
+    name:"Zimbabwe", flag:"🇿🇼", color:"#D32F2F",
+    // T20 WC 2026: Raza(c), Bennett, Burl, Cremer, Evans, Madande(wk), Maposa, Marumani, Masakadza, Munyonga, Musekiwa, Muzarabani, Myers, Ngarava, Curran
+    players:["Sikandar Raza","Tadiwanashe Marumani","Brian Bennett","Wesley Madhevere","Ryan Burl","Clive Madande (wk)","Wellington Masakadza","Blessing Muzarabani","Dion Myers","Richard Ngarava","Bradley Evans"],
+    wkIdx:5
+  },
+  IRELAND: {
+    name:"Ireland", flag:"🇮🇪", color:"#169B62",
+    // T20 WC 2026: Tucker(wk), Topping, Adair M, Adair R, Calitz, Campher, Delany, Dockrell, Humphreys, Little, McCarthy, Tector H, Tector T, White, Young
+    players:["Paul Stirling","Sam Topping","Andrew Balbirnie","Harry Tector","Lorcan Tucker (wk)","Curtis Campher","Gareth Delany","George Dockrell","Mark Adair","Josh Little","Craig Young"],
+    wkIdx:4
+  },
+};
+const TEAM_CODES = Object.keys(ALL_TEAMS);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════════
+const BALL_OUTCOMES = {
+  0:{bg:"#1a1a2e",color:"#555",   symbol:"•" },1:{bg:"#0f3460",color:"#7eb3e8",symbol:"1"},
+  2:{bg:"#16213e",color:"#a8d8ea",symbol:"2" },3:{bg:"#1a1a2e",color:"#bbb",   symbol:"3"},
+  4:{bg:"#1b4332",color:"#40c878",symbol:"4" },6:{bg:"#7b2d00",color:"#ff9a3c",symbol:"6"},
+  W:{bg:"#4a0e0e",color:"#ff4444",symbol:"W" },Wd:{bg:"#2d2d00",color:"#e8e800",symbol:"Wd"},
+  Wd1:{bg:"#2d2d00",color:"#e8e800",symbol:"Wd1"},Wd2:{bg:"#2d2d00",color:"#e8e800",symbol:"Wd2"},
+  Wd3:{bg:"#2d2d00",color:"#e8e800",symbol:"Wd3"},Wd4:{bg:"#2d2d00",color:"#d4d400",symbol:"Wd4"},
+  Nb:{bg:"#2d1b00",color:"#ff8c00",symbol:"Nb"},
+  Lb1:{bg:"#1a1a2e",color:"#7a7a9a",symbol:"Lb1"},Lb2:{bg:"#1a1a2e",color:"#7a7a9a",symbol:"Lb2"},
+  Lb3:{bg:"#1a1a2e",color:"#7a7a9a",symbol:"Lb3"},Lb4:{bg:"#1a1a2e",color:"#8ab8d4",symbol:"Lb4"},
+  By1:{bg:"#1a2a1a",color:"#6aaa6a",symbol:"By1"},By2:{bg:"#1a2a1a",color:"#6aaa6a",symbol:"By2"},
+  By3:{bg:"#1a2a1a",color:"#6aaa6a",symbol:"By3"},By4:{bg:"#1a2a1a",color:"#80c880",symbol:"By4"},
+};
+const WICKET_TYPES=["Bowled","Caught","LBW","Run Out","Stumped","Hit Wicket"];
+const SHOT_TYPES=["Cover Drive","Pull Shot","Sweep","Cut Shot","Flick","Straight Drive","Hook Shot","Glance","Defensive","Reverse Sweep","Backfoot Drive","Paddle Sweep","Dilscoop","Late Cut"];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+const isLegal  =(o)=>o!=="Wd"&&o!=="Nb"&&!isWide(o);
+const isWide   =(o)=>typeof o==="string"&&(o==="Wd"||o.startsWith("Wd"));
+const wideRuns =(o)=>o==="Wd"?1:(o.startsWith("Wd")?1+parseInt(o.slice(2)):0);
+const isLegBye =(o)=>typeof o==="string"&&o.startsWith("Lb");
+const isBye    =(o)=>typeof o==="string"&&o.startsWith("By");
+const lbRuns   =(o)=>isLegBye(o)?parseInt(o.slice(2)):0;
+const byeRuns  =(o)=>isBye(o)?parseInt(o.slice(2)):0;
+const totalRuns=(o)=>{if(typeof o==="number")return o;if(isWide(o))return wideRuns(o);if(o==="Nb")return 1;if(isLegBye(o))return lbRuns(o);if(isBye(o))return byeRuns(o);return 0;};
+const batRuns  =(o)=>(typeof o==="number"?o:0);
+const oddRuns  =(o)=>{if(isLegBye(o))return lbRuns(o)%2===1;if(isBye(o))return byeRuns(o)%2===1;return isLegal(o)&&typeof o==="number"&&o%2===1;};
+const maxBowlOv=(fmt)=>fmt==="T20"?4:fmt==="ODI"?10:Infinity;
+const makeBatter=(name)=>({name,runs:0,balls:0,fours:0,sixes:0,out:false,wicketInfo:""});
+const makeBowler=(name)=>({name,overs:0,balls:0,runs:0,wickets:0,maidens:0});
+// Session helper: 0-29 overs = morning, 30-59 = afternoon, 60-89 = evening (0-based over index)
+const getSessionName=(dayOv)=>dayOv<30?"Morning Session":dayOv<60?"Afternoon Session":"Evening Session";
+const getBreakAfterSession=(dayOv)=>dayOv>=30&&dayOv<31?"lunch":dayOv>=60&&dayOv<61?"tea":dayOv>=90?"stumps":null;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SMALL UI COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+function BallChip({outcome,small}){
+  const cfg=BALL_OUTCOMES[outcome]??BALL_OUTCOMES[0];
+  const sz=small?"w-6 h-6 text-xs":"w-8 h-8 text-sm";
+  return <div className={`${sz} rounded-full flex items-center justify-center font-bold border flex-shrink-0`} style={{background:cfg.bg,color:cfg.color,borderColor:cfg.color+"55"}}>{cfg.symbol}</div>;
+}
+
+function OverRow({over,num,bowlerName}){
+  const runs=over.reduce((a,b)=>a+totalRuns(b),0);
+  const wkts=over.filter(b=>b==="W").length;
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:"8px",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.05)"}}>
+      <span style={{width:"24px",fontSize:"11px",fontFamily:"monospace",color:"#4a7fa5",flexShrink:0}}>{num}</span>
+      <div style={{display:"flex",gap:"4px",flex:1,flexWrap:"wrap"}}>{over.map((b,i)=><BallChip key={i} outcome={b} small/>)}</div>
+      <div style={{textAlign:"right",flexShrink:0}}>
+        <div style={{fontSize:"11px",fontFamily:"monospace"}}><span style={{color:"#fff",fontWeight:700}}>{runs}</span>{wkts>0&&<span style={{color:"#f87171",marginLeft:"4px"}}>{wkts}W</span>}</div>
+        {bowlerName&&<div style={{fontSize:"9px",color:"#4a7fa5"}}>{bowlerName}</div>}
+      </div>
+    </div>
+  );
+}
+
+function RunChart({overs}){
+  if(!overs.length)return null;
+  const W=300,H=65,maxR=24;
+  const pts=overs.map((ov,i)=>{const r=ov.balls.reduce((a,b)=>a+totalRuns(b),0);return{x:(i+1)/overs.length*W,y:H-(Math.min(r,maxR)/maxR)*H};});
+  const line=pts.map((p,i)=>`${i?"L":"M"}${p.x} ${p.y}`).join(" ");
+  const area=line+` L${pts.at(-1).x} ${H} L0 ${H}Z`;
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:55}}>
+      <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity=".4"/><stop offset="100%" stopColor="#3b82f6" stopOpacity=".02"/></linearGradient></defs>
+      <path d={area} fill="url(#cg)"/><path d={line} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      {pts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#3b82f6"/>)}
+    </svg>
+  );
+}
+
+// ─── Team Picker ───────────────────────────────────────────────────────────────
+function TeamPicker({label,selected,other,onSelect}){
+  const [open,setOpen]=useState(false);
+  const team=selected?ALL_TEAMS[selected]:null;
+  return(
+    <div style={{position:"relative"}}>
+      <div style={{fontSize:"11px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",color:"#4a7fa5",marginBottom:"6px"}}>{label}</div>
+      <button onClick={()=>setOpen(!open)} style={{width:"100%",padding:"12px",borderRadius:"12px",display:"flex",alignItems:"center",gap:"10px",textAlign:"left",cursor:"pointer",background:team?"rgba(255,255,255,.06)":"rgba(255,255,255,.04)",border:`1px solid ${team?"rgba(255,255,255,.15)":"rgba(255,255,255,.08)"}`}}>
+        {team?(<><span style={{fontSize:"22px"}}>{team.flag}</span><div style={{flex:1}}><div style={{fontWeight:700,fontSize:"13px",color:"#e0eaf3"}}>{team.name}</div><div style={{fontSize:"10px",color:"#4a7fa5"}}>{selected}</div></div></>):(<div style={{flex:1,fontSize:"13px",color:"#3a5a7a"}}>Tap to select team…</div>)}
+        <span style={{color:"#4a7fa5",fontSize:"10px"}}>{open?"▲":"▼"}</span>
+      </button>
+      {open&&(
+        <div style={{position:"absolute",zIndex:30,left:0,right:0,marginTop:"4px",borderRadius:"14px",overflow:"hidden",background:"#0d1b2a",border:"1px solid rgba(59,158,255,.25)",boxShadow:"0 8px 32px rgba(0,0,0,.6)"}}>
+          <div style={{overflowY:"auto",maxHeight:"260px"}}>
+            {TEAM_CODES.map(code=>{
+              const t=ALL_TEAMS[code],isOther=code===other;
+              return(
+                <button key={code} onClick={()=>{if(!isOther){onSelect(code);setOpen(false);}}} disabled={isOther}
+                  style={{width:"100%",padding:"10px 12px",display:"flex",alignItems:"center",gap:"10px",textAlign:"left",borderBottom:"1px solid rgba(255,255,255,.05)",cursor:isOther?"not-allowed":"pointer",opacity:isOther?.3:1,background:selected===code?"rgba(59,158,255,.12)":"transparent"}}>
+                  <span style={{fontSize:"18px"}}>{t.flag}</span>
+                  <div style={{flex:1}}><div style={{fontSize:"13px",fontWeight:600,color:selected===code?"#3b9eff":"#dce8f0"}}>{t.name}</div><div style={{fontSize:"10px",color:"#4a7fa5"}}>{code}{isOther?" · already selected":""}</div></div>
+                  {selected===code&&<span style={{color:"#3b9eff",fontSize:"12px"}}>✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Bowler Modal ──────────────────────────────────────────────────────────────
+function BowlerModal({teamCode,format,bowlStats,lastBowlerIdx,onSelect}){
+  const maxOv=maxBowlOv(format),wkIdx=ALL_TEAMS[teamCode].wkIdx;
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"12px",background:"rgba(0,0,0,.87)",backdropFilter:"blur(6px)"}}>
+      <div style={{width:"100%",maxWidth:"400px",borderRadius:"20px",overflow:"hidden",background:"#0d1b2a",border:"1px solid rgba(59,158,255,.3)"}}>
+        <div style={{padding:"14px 16px",background:"rgba(59,158,255,.1)",borderBottom:"1px solid rgba(255,255,255,.08)"}}>
+          <div style={{fontWeight:800,fontSize:"15px",color:"#3b9eff"}}>🏏 Select Next Bowler</div>
+          <div style={{fontSize:"11px",color:"#4a7fa5",marginTop:"2px"}}>{format==="Test"?"No over limit":`Max ${maxOv} overs`} · No consecutive overs · WK excluded</div>
+        </div>
+        <div style={{overflowY:"auto",maxHeight:"380px"}}>
+          {bowlStats.map((p,i)=>{
+            const isWK=i===wkIdx,isLast=i===lastBowlerIdx,full=format!=="Test"&&p.overs>=maxOv;
+            const disabled=isWK||isLast||full;
+            let reason="";if(isWK)reason="Wicket-keeper";else if(isLast)reason="Bowled last over";else if(full)reason=`Quota full (${maxOv}ov)`;
+            const eco=p.overs>0||p.balls>0?(p.runs/Math.max((p.overs*6+p.balls)/6,.1)).toFixed(1):null;
+            const ini=p.name.replace(/\s*\(wk\)/,"").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+            return(
+              <button key={i} onClick={()=>!disabled&&onSelect(i)} disabled={disabled}
+                style={{width:"100%",padding:"12px 14px",display:"flex",alignItems:"center",gap:"10px",textAlign:"left",borderBottom:"1px solid rgba(255,255,255,.05)",cursor:disabled?"not-allowed":"pointer",opacity:disabled?.35:1,background:"transparent"}}>
+                <div style={{width:"34px",height:"34px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:800,flexShrink:0,background:disabled?"rgba(255,255,255,.05)":p.overs>0||p.balls>0?"rgba(59,158,255,.18)":"rgba(255,255,255,.08)",color:disabled?"#444":p.overs>0||p.balls>0?"#3b9eff":"#888",border:`1px solid ${disabled?"rgba(255,255,255,.05)":p.overs>0||p.balls>0?"rgba(59,158,255,.3)":"rgba(255,255,255,.1)"}`}}>{ini}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:"13px",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:disabled?"#555":"#dce8f0"}}>{p.name}</div>
+                  {reason?<div style={{fontSize:"11px",color:"#ff6666"}}>{reason}</div>:<div style={{fontSize:"11px",color:"#4a7fa5"}}>{eco?`${p.overs}.${p.balls%6}ov · ${p.runs}R · ${p.wickets}W · Eco ${eco}`:"Yet to bowl"}</div>}
+                </div>
+                {format!=="Test"&&(<div style={{display:"flex",gap:"2px",flexShrink:0}}>{Array.from({length:Math.min(maxOv,10)}).map((_,j)=><div key={j} style={{width:"5px",height:"12px",borderRadius:"2px",background:j<p.overs?"#3b9eff":"rgba(255,255,255,.1)"}}/>)}{maxOv>10&&<span style={{fontSize:"10px",color:"#4a7fa5",marginLeft:"4px"}}>{p.overs}/{maxOv}</span>}</div>)}
+                {format==="Test"&&<div style={{fontSize:"10px",fontFamily:"monospace",color:"#4a7fa5",flexShrink:0}}>{p.overs}ov</div>}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{padding:"10px",borderTop:"1px solid rgba(255,255,255,.07)",textAlign:"center",fontSize:"11px",color:"#2a4a6a"}}>WK and previous over's bowler are ineligible</div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
+function CricketScorer(){
+  // ── Setup / Toss ──
+  const [screen,         setScreen]         = useState("teams");
+  const [format,         setFormat]         = useState("T20");
+  const [teamA,          setTeamA]          = useState(null);
+  const [teamB,          setTeamB]          = useState(null);
+  const [tossStep,       setTossStep]       = useState("pick_caller");
+  const [tossCallerSlot, setTossCallerSlot] = useState(null);
+  const [tossSide,       setTossSide]       = useState(null);
+  const [tossResult,     setTossResult]     = useState(null);
+  const [tossWon,        setTossWon]        = useState(null);
+  const [tossChoice,     setTossChoice]     = useState(null);
+
+  // ── Match ──
+  // For Test: innings 1–4 (1&3 = teamA bats, 2&4 = teamB bats by default,
+  //           but swapped if B won toss & chose bat)
+  // innIdx = 0-based index into scores[] / allOvers[] / batStats[] / bowlStats[]
+  const [innIdx,         setInnIdx]         = useState(0);
+  const [batTeamCode,    setBatTeamCode]    = useState(null); // who is batting NOW
+  const [target,         setTarget]         = useState(null); // only relevant in limited overs 2nd inn / Test 4th inn
+  const [matchResult,    setMatchResult]    = useState(null);
+
+  // scores[0..3] — up to 4 innings for Test
+  const [scores,   setScores]   = useState([{runs:0,wickets:0,overs:0,balls:0},{runs:0,wickets:0,overs:0,balls:0},{runs:0,wickets:0,overs:0,balls:0},{runs:0,wickets:0,overs:0,balls:0}]);
+  const [curOver,  setCurOver]  = useState([]);
+  const [allOvers, setAllOvers] = useState([[],[],[],[]]);
+
+  // batTeamOrder[i] = which team code bats in innings i (0-based)
+  const [batOrder, setBatOrder] = useState(["","","",""]);
+
+  // Strike model
+  const [onField,     setOnField]     = useState([0,1]);
+  const [strikerSlot, setStrikerSlot] = useState(0);
+  const nextBatRef = useRef(2);
+
+  // Bowler
+  const [bowlerIdx,       setBowlerIdx]       = useState(null);
+  const [lastBowlerIdx,   setLastBowlerIdx]   = useState(null);
+  const [showBowlerModal, setShowBowlerModal] = useState(false);
+
+  // batStats/bowlStats — indexed by [team][inn]: { [teamCode]: { [innIdx]: stats[] } }
+  const [batStats,  setBatStats]  = useState({});
+  const [bowlStats, setBowlStats] = useState({});
+
+  const [commentary,  setCommentary]  = useState([]);
+  const [recentBalls, setRecentBalls] = useState([]);
+  const [flashScore,  setFlashScore]  = useState(false);
+  const [tab,         setTab]         = useState("score");
+  const [wicketModal, setWicketModal] = useState(false);
+  const [showEndModal,setShowEndModal]= useState(false);
+  const [showFollowOnModal, setShowFollowOnModal] = useState(false);
+  const [showDeclareModal,  setShowDeclareModal]  = useState(false);
+  const [showHomeConfirm,   setShowHomeConfirm]   = useState(false);
+
+  // ── Super Over (T20 tie) ──
+  const [superOverNum,      setSuperOverNum]      = useState(0);   // 0 = not in super over, 1+ = super over number
+  const [superOverPhase,    setSuperOverPhase]    = useState(0);   // 0=first bat, 1=second bat
+  const [superOverScores,   setSuperOverScores]   = useState([]);  // [{team, runs, wickets}]
+  const [showSuperOverModal,setShowSuperOverModal]= useState(false);
+
+  // ── Test Match Day/Session tracking ──
+  const [testDay,          setTestDay]          = useState(1);   // 1–5
+  const [dayOvers,         setDayOvers]         = useState(0);   // overs bowled today (resets each day)
+  const [sessionBreak,     setSessionBreak]     = useState(null); // null | {type:'lunch'|'tea'|'stumps', day, snapshots}
+  const [sessionSnapshots, setSessionSnapshots] = useState([]);   // array of end-of-session snapshots for pie chart
+
+  // ── Derived ──
+  const maxOv = format==="T20"?20:format==="ODI"?50:999;
+  const sc     = scores[innIdx];
+  const bowlTeamCode = batTeamCode?(batTeamCode===teamA?teamB:teamA):null;
+  const striker = onField[strikerSlot];
+
+  // How many innings total: T20/ODI = 2, Test = 4
+  const totalInnings = format==="Test"?4:2;
+
+  const effMaxOv = superOverNum>0?1:maxOv;
+  const crr=()=>{const b=sc.overs*6+sc.balls;return b===0?"0.00":((sc.runs/b)*6).toFixed(2);};
+  const rrr=()=>{
+    if(!target)return null;
+    const bl=effMaxOv*6-(sc.overs*6+sc.balls),need=target-sc.runs;
+    return(bl<=0||need<=0)?null:((need/bl)*6).toFixed(2);
+  };
+  // Balls remaining in innings (limited overs only)
+  const ballsRemaining=()=>{
+    if(format==="Test"&&superOverNum===0)return null;
+    return effMaxOv*6-(sc.overs*6+sc.balls);
+  };
+  const runsNeeded=()=>target?Math.max(0,target-sc.runs):null;
+
+  const addComm=(text,type="normal")=>{
+    setCommentary(prev=>[{id:Date.now()+Math.random(),over:`${sc.overs}.${sc.balls}`,text,type},...prev.slice(0,79)]);
+  };
+
+  // ── Reset in-innings state ──
+  const resetInningState=()=>{
+    setCurOver([]);setOnField([0,1]);setStrikerSlot(0);
+    setBowlerIdx(null);setLastBowlerIdx(null);
+    nextBatRef.current=2;
+  };
+
+  // ── Init match ──
+  const initMatch=(firstBatCode)=>{
+    const a=teamA,b=teamB;
+    // Build batOrder: for limited overs [firstBat, other]; for Test [firstBat, other, firstBat, other]
+    const other=firstBatCode===a?b:a;
+    const order=format==="Test"?[firstBatCode,other,firstBatCode,other]:[firstBatCode,other];
+    setBatOrder(order);
+    // Init stats for all 4 innings slots (even if unused for limited overs)
+    const initBat={};const initBowl={};
+    [a,b].forEach(tc=>{initBat[tc]={};initBowl[tc]={};[0,1,2,3].forEach(i=>{initBat[tc][i]=ALL_TEAMS[tc].players.map(makeBatter);initBowl[tc][i]=ALL_TEAMS[tc].players.map(makeBowler);});});
+    setBatStats(initBat);setBowlStats(initBowl);
+    setBatTeamCode(firstBatCode);
+    setInnIdx(0);
+    setScores([{runs:0,wickets:0,overs:0,balls:0},{runs:0,wickets:0,overs:0,balls:0},{runs:0,wickets:0,overs:0,balls:0},{runs:0,wickets:0,overs:0,balls:0}]);
+    setAllOvers([[],[],[],[]]);
+    resetInningState();
+    setTarget(null);setMatchResult(null);setRecentBalls([]);setCommentary([]);setTab("score");
+    setScreen("playing");setShowBowlerModal(true);
+    setTimeout(()=>{},50);
+  };
+
+  const triggerBowlerChange=(prevIdx)=>{setLastBowlerIdx(prevIdx);setBowlerIdx(null);setShowBowlerModal(true);};
+
+  // ── Follow-on threshold (Test only: 200 runs for 5-day) ──
+  const FOLLOW_ON_LEAD = 200;
+
+  // ── Can follow-on be offered? ──
+  // Only after innings 1 (idx=0) is done AND innings 2 (idx=1) just ended with deficit >= 200
+  // The team that batted FIRST (batOrder[0]) is the one who can enforce it
+  const canEnforceFollowOn=(newScores)=>{
+    if(format!=="Test") return false;
+    const firstBatRuns = newScores[0].runs;
+    const secondBatRuns = newScores[1].runs;
+    const deficit = firstBatRuns - secondBatRuns;
+    // Follow-on can only be offered right after innIdx===1 ends
+    return innIdx===1 && deficit >= FOLLOW_ON_LEAD;
+  };
+
+  // ── Compute target for 4th innings ──
+  const computeTestTarget=(newScores, newBatOrder)=>{
+    // Batting team in 4th innings needs: opponent total across their innings + 1
+    // newBatOrder[3] is who bats 4th
+    const team4=newBatOrder[3], team3=newBatOrder[2];
+    // team batting 3rd & 4th share same side; opponent batted 1st & 2nd (or 1st & 3rd in follow-on)
+    // Sum runs for "defending" team (who is NOT batting in inn 4)
+    const defendingTeam = team4===newBatOrder[0] ? newBatOrder[1] : newBatOrder[0];
+    // Find innings indexes where defending team batted
+    const defInnRuns = newBatOrder.slice(0,3).reduce((sum,tc,i)=>tc===defendingTeam?sum+newScores[i].runs:sum, 0);
+    // batting team runs so far (innings 0..2 where they batted)
+    const batInnRuns = newBatOrder.slice(0,3).reduce((sum,tc,i)=>tc===team4?sum+newScores[i].runs:sum, 0);
+    return defInnRuns - batInnRuns + 1;
+  };
+
+  // ── Advance to next innings (normal path, no follow-on) ──
+  const advanceInnings=(newScores,currentInnIdx,currentBatCode,forcedBatCode=null)=>{
+    const nextInn=currentInnIdx+1;
+    const currentBowlCode=currentBatCode===teamA?teamB:teamA;
+
+    if(format!=="Test"){
+      if(nextInn===1){
+        const tgt=newScores[0].runs+1;
+        setTarget(tgt);
+        setInnIdx(1);
+        setBatTeamCode(currentBowlCode);
+        resetInningState();
+        setShowBowlerModal(true);
+        addComm(`1st innings over! ${ALL_TEAMS[currentBowlCode].name} need ${tgt} runs to win.`,"milestone");
+        return true;
+      }
+      return false;
+    } else {
+      if(nextInn>=totalInnings){return false;}
+      // forcedBatCode is used when follow-on is enforced (same team bats again)
+      const nextBatCode = forcedBatCode || (nextInn%2===0?batOrder[0]:batOrder[1]);
+
+      // Update batOrder if follow-on was enforced (inn2 & inn3 same team bats)
+      let newBatOrder = [...batOrder];
+      if(forcedBatCode){
+        // inn index 2 = same as inn 1 team; inn index 3 = batOrder[0] (first batting team)
+        newBatOrder[2] = forcedBatCode;
+        newBatOrder[3] = forcedBatCode===teamA?teamB:teamA;
+        setBatOrder(newBatOrder);
+      }
+
+      let tgt=null;
+      if(nextInn===3){
+        tgt = computeTestTarget(newScores, newBatOrder);
+        setTarget(tgt);
+        const chaser = ALL_TEAMS[nextBatCode].name;
+        addComm(`4th innings! ${chaser} need ${tgt} to win.`,"milestone");
+      } else {
+        addComm(`Innings ${nextInn+1} begins! ${ALL_TEAMS[nextBatCode].name} batting.`,"milestone");
+      }
+
+      setInnIdx(nextInn);
+      setBatTeamCode(nextBatCode);
+      resetInningState();
+      setShowBowlerModal(true);
+      return true;
+    }
+  };
+
+  // ── Follow-on enforced by fielding captain ──
+  const enforceFollowOn=()=>{
+    // The team that just batted (innIdx=1) bats again (innIdx=2)
+    const followOnTeam = batOrder[1]; // who just batted and trails
+    const newBatOrder = [batOrder[0], batOrder[1], batOrder[1], batOrder[0]];
+    setBatOrder(newBatOrder);
+    setInnIdx(2);
+    setBatTeamCode(followOnTeam);
+    resetInningState();
+    setShowBowlerModal(true);
+    setShowFollowOnModal(false);
+    addComm(`⚡ FOLLOW-ON ENFORCED! ${ALL_TEAMS[followOnTeam].name} must bat again!`,"milestone");
+  };
+
+  // ── Declare innings (Test only, batting captain closes innings) ──
+  const declareInnings=()=>{
+    if(format!=="Test"||matchResult) return;
+    // Can declare in 1st or 2nd innings (innIdx 0,1,2 — not the final 4th innings)
+    if(innIdx>=3) return;
+    setShowDeclareModal(false);
+    const declaringTeam = ALL_TEAMS[batTeamCode].name;
+    const declaredScore = `${sc.runs}/${sc.wickets} (${sc.overs}.${sc.balls} ov)`;
+    addComm(`🏳️ DECLARATION! ${declaringTeam} declare on ${declaredScore}`,"milestone");
+
+    // Save current state before advancing
+    const newScores = scores.map(s=>({...s}));
+    // Mark innings as declared (store current score)
+    // Check if follow-on applies AFTER inn 1 ends
+    const offerFollow = canEnforceFollowOn(newScores);
+    if(offerFollow){
+      setShowFollowOnModal(true);
+      return;
+    }
+    advanceInnings(newScores, innIdx, batTeamCode);
+  };
+
+  // ── Compute Test match result (supports follow-on: batOrder may be [A,B,B,A]) ──
+  const computeTestResult=(newScores,endedInnIdx)=>{
+    // Use current batOrder (may be modified by follow-on)
+    const order = batOrder;
+    // Sum runs per team across all innings played
+    const teamRuns=(tc)=>order.slice(0,endedInnIdx+1).reduce((sum,t,i)=>t===tc?sum+(newScores[i]?.runs||0):sum,0);
+    const aRuns=teamRuns(order[0]);
+    const bRuns=teamRuns(order[1]);
+
+    if(endedInnIdx===1) return null; // 2nd innings just ended, may follow-on or continue
+
+    if(endedInnIdx===2){
+      // 3rd innings just ended — check if match can be won by an innings
+      // This happens when follow-on team is all out and still trails
+      // The non-follow-on team leads across all innings played
+      if(aRuns>bRuns){
+        const diff=aRuns-bRuns;
+        // Check if winning team still has innings to spare (innings win)
+        const aInningsPlayed=order.slice(0,3).filter(t=>t===order[0]).length;
+        if(aInningsPlayed===1){return`${ALL_TEAMS[order[0]].name} won by an innings and ${diff} run${diff!==1?"s":""}!`;}
+        return`${ALL_TEAMS[order[0]].name} won by ${diff} run${diff!==1?"s":""}!`;
+      }
+      if(bRuns>aRuns){
+        const diff=bRuns-aRuns;
+        const bInningsPlayed=order.slice(0,3).filter(t=>t===order[1]).length;
+        if(bInningsPlayed===1){return`${ALL_TEAMS[order[1]].name} won by an innings and ${diff} run${diff!==1?"s":""}!`;}
+        return`${ALL_TEAMS[order[1]].name} won by ${diff} run${diff!==1?"s":""}!`;
+      }
+      return null;
+    }
+    if(endedInnIdx===3){
+      if(aRuns>bRuns){const diff=aRuns-bRuns;return`${ALL_TEAMS[order[0]].name} won by ${diff} run${diff!==1?"s":""}!`;}
+      if(bRuns>aRuns){const diff=bRuns-aRuns;return`${ALL_TEAMS[order[1]].name} won by ${diff} run${diff!==1?"s":""}!`;}
+      return"Match Drawn!";
+    }
+    return null;
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  processBall
+  // ═══════════════════════════════════════════════════════════════════════════
+  const processBall=(outcome)=>{
+    if(matchResult||bowlerIdx===null)return;
+    if(outcome==="W"){setWicketModal(true);return;}
+
+    setFlashScore(true);setTimeout(()=>setFlashScore(false),400);
+
+    let newScores=scores.map(s=>({...s}));
+    let newBat={...batStats,[batTeamCode]:{...batStats[batTeamCode],[innIdx]:batStats[batTeamCode][innIdx].map(p=>({...p}))}};
+    let newBowl={...bowlStats,[bowlTeamCode]:{...bowlStats[bowlTeamCode],[innIdx]:bowlStats[bowlTeamCode][innIdx].map(p=>({...p}))}};
+
+    const legal=isLegal(outcome),runs=totalRuns(outcome);
+    newScores[innIdx].runs+=runs;
+    // Byes don't count against bowler's runs; leg byes and wides do
+    if(!isBye(outcome))newBowl[bowlTeamCode][innIdx][bowlerIdx].runs+=runs;
+
+    if(legal){
+      newBat[batTeamCode][innIdx][striker].balls+=1;
+      const br=batRuns(outcome);
+      newBat[batTeamCode][innIdx][striker].runs+=br;
+      if(outcome===4)newBat[batTeamCode][innIdx][striker].fours+=1;
+      if(outcome===6)newBat[batTeamCode][innIdx][striker].sixes+=1;
+      newBowl[bowlTeamCode][innIdx][bowlerIdx].balls+=1;
+    }
+
+    let newSlot=strikerSlot,newBalls=sc.balls,newOvers=sc.overs;
+    let newCurOver=[...curOver,outcome];
+
+    if(legal){
+      newBalls+=1;
+      if(newBalls===6){
+        newBalls=0;newOvers+=1;
+        if(!oddRuns(outcome))newSlot=1-newSlot;
+        const co={balls:[...newCurOver],bowlerIdx};
+        setAllOvers(prev=>{const c=prev.map(a=>[...a]);c[innIdx]=[...c[innIdx],co];return c;});
+        newBowl[bowlTeamCode][innIdx][bowlerIdx].overs+=1;
+        if(newCurOver.every(b=>b===0||isLegBye(b)||isBye(b)))newBowl[bowlTeamCode][innIdx][bowlerIdx].maidens+=1;
+        setCurOver([]);newCurOver=[];
+      }else{
+        if(oddRuns(outcome))newSlot=1-newSlot;
+        setCurOver(newCurOver);
+      }
+    }else{setCurOver(newCurOver);}
+
+    newScores[innIdx].balls=newBalls;newScores[innIdx].overs=newOvers;
+
+    // ── Test session/day break detection (fires when an over completes) ──
+    if(format==="Test" && legal && newBalls===0 && newOvers>0){
+      const newDayOvers = dayOvers + 1;
+      setDayOvers(newDayOvers);
+      if(newDayOvers===30||newDayOvers===60||newDayOvers>=90){
+        // Build snapshot for this session break
+        const snap={
+          day: testDay,
+          session: getSessionName(newDayOvers-1),
+          type: newDayOvers===30?"lunch":newDayOvers===60?"tea":"stumps",
+          batTeam: batTeamCode,
+          bowlTeam: bowlTeamCode,
+          score: {...newScores[innIdx], overs:newOvers, balls:0},
+          allScores: newScores.map(s=>({...s})),
+          batPlayers: newBat[batTeamCode][innIdx].map(p=>({...p})),
+          bowlPlayers: newBowl[bowlTeamCode][innIdx].map(p=>({...p})),
+          sessionRunsA: null, sessionRunsB: null,
+          innIdx,
+          batOrder: [...batOrder],
+        };
+        setSessionSnapshots(prev=>[...prev, snap]);
+        setScores(newScores);setBatStats(newBat);setBowlStats(newBowl);setStrikerSlot(newSlot);
+        // ── Day 5 stumps with no result = DRAW ──
+        if(newDayOvers>=90 && testDay>=5){
+          const res="Match Drawn! Five days of Test cricket — no result.";
+          setMatchResult(res);addComm(`🤝 ${res}`,"milestone");
+          setSessionBreak(snap);
+          setShowEndModal(true);return;
+        }
+        setSessionBreak(snap);
+        return;
+      }
+    }
+
+    // Commentary
+    const bName=batStats[batTeamCode][innIdx][striker].name,bowName=bowlStats[bowlTeamCode][innIdx][bowlerIdx].name;
+    const shot=SHOT_TYPES[Math.floor(Math.random()*SHOT_TYPES.length)];
+    let ct="",cy="normal";
+    if(outcome===0)ct=`${bName} defends. Dot ball.`;
+    else if(outcome===1){ct=`${bName} tucks for a single — strike rotates!`;cy="single";}
+    else if(outcome===2)ct=`Good running! ${bName} takes two.`;
+    else if(outcome===3)ct=`${bName} finds the gap — three runs! Strike changes.`;
+    else if(outcome===4){ct=`FOUR! ${bName} plays a magnificent ${shot}!`;cy="four";}
+    else if(outcome===6){ct=`SIX! ${bName} launches ${bowName} over the boundary!`;cy="six";}
+    else if(isWide(outcome)){const r=wideRuns(outcome);ct=r===1?`Wide by ${bowName}. 1 extra, no ball count.`:`Wide by ${bowName} — ${r} extras (${r-1} runs + wide penalty). No ball count.`;}
+    else if(outcome==="Nb")ct=`No Ball from ${bowName}! Free hit next. 1 extra.`;
+    else if(isLegBye(outcome)){const r=lbRuns(outcome);ct=`Leg bye! ${r} run${r!==1?"s":""} off the pad. Legal delivery, ${r} extra${r!==1?"s":""}.`;}
+    else if(isBye(outcome)){const r=byeRuns(outcome);ct=`Bye! ${r} run${r!==1?"s":""} — missed by keeper. ${r} extra${r!==1?"s":""}, not charged to bowler.`;}
+    addComm(ct,cy);
+    setRecentBalls(prev=>[...prev.slice(-29),outcome]);
+
+    // Check innings over
+    const inningsOver=newScores[innIdx].wickets>=10||(format!=="Test"&&newScores[innIdx].overs>=maxOv)||
+      (superOverNum>0&&newScores[innIdx].overs>=1);
+
+    // ── Super Over: check if chaser wins/ties in super over ──
+    if(superOverNum>0&&target&&newScores[innIdx].runs>=target){
+      const w=10-newScores[innIdx].wickets;
+      const prevSO=[...superOverScores,{team:batTeamCode,runs:newScores[innIdx].runs,wickets:newScores[innIdx].wickets}];
+      const t1=prevSO.find(s=>s.team===batOrder[0]),t2=prevSO.find(s=>s.team===batOrder[1]);
+      const res=`${ALL_TEAMS[batTeamCode].name} won the Super Over ${superOverNum} by ${w} wicket${w!==1?"s":""}!`;
+      setMatchResult(res);addComm(`🏆 ${res}`,"milestone");
+      setScores(newScores);setBatStats(newBat);setBowlStats(newBowl);setStrikerSlot(newSlot);
+      setShowEndModal(true);return;
+    }
+
+    // Check target chased (limited overs & test 4th innings) — regular innings
+    if(superOverNum===0&&target&&newScores[innIdx].runs>=target){
+      const w=10-newScores[innIdx].wickets;
+      const res=`${ALL_TEAMS[batTeamCode].name} won by ${w} wicket${w!==1?"s":""}!`;
+      setMatchResult(res);addComm(`🏆 Match Over! ${res}`,"milestone");
+      setScores(newScores);setBatStats(newBat);setBowlStats(newBowl);setStrikerSlot(newSlot);
+      setShowEndModal(true);return;
+    }
+
+    if(inningsOver){
+      setScores(newScores);setBatStats(newBat);setBowlStats(newBowl);
+
+      // ── Super Over innings end ──
+      if(superOverNum>0){
+        if(superOverPhase===0){
+          // First SO team done — store their score, set target for second SO team
+          const tgt=newScores[innIdx].runs+1;
+          const firstTeamEntry={team:batTeamCode,runs:newScores[innIdx].runs,wickets:newScores[innIdx].wickets};
+          setSuperOverScores(prev=>[...prev,firstTeamEntry]);
+          setTarget(tgt);
+          setSuperOverPhase(1);
+          const nextTeam=batOrder[1]===batTeamCode?batOrder[0]:batOrder[1];
+          setBatTeamCode(nextTeam);
+          resetInningState();setShowBowlerModal(true);
+          addComm(`Super Over ${superOverNum}: ${ALL_TEAMS[nextTeam].name} need ${tgt} to win.`,"milestone");
+          setStrikerSlot(0);return;
+        } else {
+          // Second SO team done — did they tie again?
+          // superOverScores.last = first SO team in this SO
+          const firstEntry=superOverScores[superOverScores.length-1];
+          const soScore1=firstEntry?.runs??0;
+          const soScore2=newScores[innIdx].runs;
+          if(soScore2<soScore1){
+            // First SO team won (chasing team fell short)
+            const deficit=soScore1-soScore2;
+            const res=`${ALL_TEAMS[firstEntry.team].name} won Super Over ${superOverNum} by ${deficit} run${deficit!==1?"s":""}!`;
+            setMatchResult(res);addComm(`🏆 ${res}`,"milestone");setStrikerSlot(newSlot);setShowEndModal(true);return;
+          } else {
+            // soScore2 === soScore1: tie (soScore2>soScore1 = win, handled before inningsOver block)
+            const newSONum=superOverNum+1;
+            setSuperOverScores([]);  // reset for new SO
+            setSuperOverNum(newSONum);
+            setSuperOverPhase(0);
+            setScores(scores.map((_,i)=>i===innIdx?{runs:0,wickets:0,overs:0,balls:0}:scores[i]));
+            setAllOvers(prev=>{const c=prev.map(a=>[...a]);c[innIdx]=[];return c;});
+            // Alternate: second team from previous SO bats first now
+            const firstSOTeam=batTeamCode;
+            setTarget(null);
+            setBatTeamCode(firstSOTeam);
+            resetInningState();setShowBowlerModal(true);
+            addComm(`⚡ Super Over ${newSONum}! Another tie — ${ALL_TEAMS[firstSOTeam].name} bats first!`,"milestone");
+            setStrikerSlot(0);return;
+          }
+        }
+      }
+
+      if(format==="Test"){
+        const res=computeTestResult(newScores,innIdx);
+        if(res){setMatchResult(res);addComm(`🏆 Match Over! ${res}`,"milestone");setStrikerSlot(newSlot);setShowEndModal(true);return;}
+        if(innIdx===1 && canEnforceFollowOn(newScores)){
+          setScores(newScores);setBatStats(newBat);setBowlStats(newBowl);setStrikerSlot(newSlot);
+          setShowFollowOnModal(true);return;
+        }
+      }else{
+        if(innIdx===0){
+          const tgt=newScores[0].runs+1;
+          setTarget(tgt);setInnIdx(1);setBatTeamCode(bowlTeamCode);
+          resetInningState();setShowBowlerModal(true);
+          addComm(`Innings over! ${ALL_TEAMS[bowlTeamCode].name} need ${tgt} to win.`,"milestone");
+          setStrikerSlot(0);return;
+        } else {
+          // 2nd innings done — check tie
+          const chase=newScores[1].runs;
+          const tgt1=newScores[0].runs;
+          if(chase===tgt1){
+            // TIE
+            if(format==="ODI"){
+              const res=`Match Tied! ${ALL_TEAMS[batTeamCode].name} ${chase}/${newScores[1].wickets} tied ${ALL_TEAMS[bowlTeamCode].name} ${tgt1}. No Super Over in ODI.`;
+              setMatchResult(res);addComm(`🤝 ${res}`,"milestone");setStrikerSlot(newSlot);setShowEndModal(true);return;
+            } else {
+              // T20 — Super Over
+              const newSONum=superOverNum+1;
+              setSuperOverNum(newSONum);
+              setSuperOverPhase(0);
+              setSuperOverScores([]);
+              // Use same innings index but reset score for the over
+              // We reuse innIdx=1 slot but reset its score
+              setScores(scores.map((_,i)=>i===1?{runs:0,wickets:0,overs:0,balls:0}:scores[i]));
+              setAllOvers(prev=>{const c=prev.map(a=>[...a]);c[1]=[];return c;});
+              // First SO: losing team in main match bats first (convention: team that fielded first = bowlTeamCode bats first in SO)
+              const firstSOTeam=bowlTeamCode;
+              setBatTeamCode(firstSOTeam);
+              setTarget(null);
+              resetInningState();setShowBowlerModal(true);
+              addComm(`⚡ SUPER OVER ${newSONum}! ${ALL_TEAMS[firstSOTeam].name} bats first.`,"milestone");
+              setStrikerSlot(0);return;
+            }
+          }
+          // 2nd innings done, batting team didn't reach target
+          const deficit=target-newScores[1].runs-1;
+          const res=`${ALL_TEAMS[bowlTeamCode].name} won by ${deficit} run${deficit!==1?"s":""}!`;
+          setMatchResult(res);addComm(`🏆 Match Over! ${res}`,"milestone");setStrikerSlot(newSlot);setShowEndModal(true);return;
+        }
+      }
+      // Test: advance innings
+      const moved=advanceInnings(newScores,innIdx,batTeamCode);
+      if(!moved){const res=computeTestResult(newScores,innIdx);if(res){setMatchResult(res);setShowEndModal(true);}}
+      setStrikerSlot(newSlot);return;
+    }
+
+    setScores(newScores);setBatStats(newBat);setBowlStats(newBowl);setStrikerSlot(newSlot);
+    if(legal&&newBalls===0&&newOvers>0&&!inningsOver){
+      // ── End-of-over chasing message ──
+      if(target&&!matchResult){
+        const need=target-newScores[innIdx].runs;
+        const wktsLeft=10-newScores[innIdx].wickets;
+        if(format==="T20"||format==="ODI"){
+          const ovsLeft=maxOv-newOvers;
+          const ballsLeft=ovsLeft*6;
+          if(need>0&&ovsLeft>0)
+            addComm(`📊 ${ALL_TEAMS[batTeamCode].name} need ${need} run${need!==1?"s":""} from ${ovsLeft} over${ovsLeft!==1?"s":""} (${ballsLeft} balls) with ${wktsLeft} wicket${wktsLeft!==1?"s":""} in hand.`,"milestone");
+        } else if(format==="Test"&&innIdx===3){
+          // Test 4th innings — show both perspectives
+          if(need>0)
+            addComm(`🏏 ${ALL_TEAMS[batTeamCode].name} need ${need} run${need!==1?"s":""} to win — ${ALL_TEAMS[bowlTeamCode].name} need ${wktsLeft} wicket${wktsLeft!==1?"s":""} to win.`,"milestone");
+        }
+      }
+      triggerBowlerChange(bowlerIdx);
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  processWicket
+  // ═══════════════════════════════════════════════════════════════════════════
+  const processWicket=(wType)=>{
+    setWicketModal(false);
+    if(matchResult||bowlerIdx===null)return;
+    const batter=batStats[batTeamCode][innIdx][striker],bowName=bowlStats[bowlTeamCode][innIdx][bowlerIdx].name;
+
+    let newScores=scores.map(s=>({...s}));
+    let newBat={...batStats,[batTeamCode]:{...batStats[batTeamCode],[innIdx]:batStats[batTeamCode][innIdx].map(p=>({...p}))}};
+    let newBowl={...bowlStats,[bowlTeamCode]:{...bowlStats[bowlTeamCode],[innIdx]:bowlStats[bowlTeamCode][innIdx].map(p=>({...p}))}};
+
+    newBat[batTeamCode][innIdx][striker]={...batter,out:true,balls:batter.balls+1,wicketInfo:`${wType} b ${bowName}`};
+    if(wType!=="Run Out")newBowl[bowlTeamCode][innIdx][bowlerIdx].wickets+=1;
+    newScores[innIdx].wickets+=1;newScores[innIdx].balls+=1;
+    newBowl[bowlTeamCode][innIdx][bowlerIdx].balls+=1;
+
+    const newCurArr=[...curOver,"W"];
+    let newSlot=strikerSlot,newOnField=[...onField],overEnded=false;
+
+    if(newScores[innIdx].balls===6){
+      newScores[innIdx].balls=0;newScores[innIdx].overs+=1;
+      newBowl[bowlTeamCode][innIdx][bowlerIdx].overs+=1;
+      setAllOvers(prev=>{const c=prev.map(a=>[...a]);c[innIdx]=[...c[innIdx],{balls:newCurArr,bowlerIdx}];return c;});
+      setCurOver([]);
+      const nxt=nextBatRef.current;if(nxt<11){newOnField[newSlot]=nxt;nextBatRef.current=nxt+1;}
+      newSlot=1-newSlot;overEnded=true;
+      // Session break check on wicket that ends an over
+      if(format==="Test"){
+        const newDayOvers2 = dayOvers + 1;
+        if(newDayOvers2===30||newDayOvers2===60||newDayOvers2>=90){
+          setDayOvers(newDayOvers2);
+          const snap={
+            day:testDay,session:getSessionName(newDayOvers2-1),
+            type:newDayOvers2===30?"lunch":newDayOvers2===60?"tea":"stumps",
+            batTeam:batTeamCode,bowlTeam:bowlTeamCode,
+            score:{...newScores[innIdx],overs:newScores[innIdx].overs,balls:0},
+            allScores:newScores.map(s=>({...s})),
+            batPlayers:newBat[batTeamCode][innIdx].map(p=>({...p})),
+            bowlPlayers:newBowl[bowlTeamCode][innIdx].map(p=>({...p})),
+            innIdx,batOrder:[...batOrder],
+          };
+          setSessionSnapshots(prev=>[...prev,snap]);
+          addComm(`WICKET! ${batter.name} is OUT — ${wType} b ${bowName}!`,"wicket");
+          setRecentBalls(prev=>[...prev.slice(-29),"W"]);
+          setScores(newScores);setBatStats(newBat);setBowlStats(newBowl);setOnField(newOnField);setStrikerSlot(newSlot);
+          setSessionBreak(snap);
+          return;
+        }
+        setDayOvers(prev=>prev+1);
+      }
+    }else{
+      setCurOver(newCurArr);
+      const nxt=nextBatRef.current;if(nxt<11){newOnField[newSlot]=nxt;nextBatRef.current=nxt+1;}
+    }
+
+    addComm(`WICKET! ${batter.name} is OUT — ${wType} b ${bowName}!`,"wicket");
+    setRecentBalls(prev=>[...prev.slice(-29),"W"]);
+
+    const inningsOver=newScores[innIdx].wickets>=10||(format!=="Test"&&newScores[innIdx].overs>=maxOv);
+
+    if(inningsOver){
+      setScores(newScores);setBatStats(newBat);setBowlStats(newBowl);setOnField(newOnField);setStrikerSlot(newSlot);
+
+      if(format==="Test"){
+        const res=computeTestResult(newScores,innIdx);
+        if(res){setMatchResult(res);addComm(`🏆 Match Over! ${res}`,"milestone");setShowEndModal(true);return;}
+        if(innIdx===1 && canEnforceFollowOn(newScores)){
+          setShowFollowOnModal(true);return;
+        }
+        const moved=advanceInnings(newScores,innIdx,batTeamCode);
+        if(!moved){const r2=computeTestResult(newScores,innIdx);if(r2){setMatchResult(r2);setShowEndModal(true);}}
+      }else{
+        if(innIdx===0){
+          const tgt=newScores[0].runs+1;
+          setTarget(tgt);setInnIdx(1);setBatTeamCode(bowlTeamCode);
+          resetInningState();setShowBowlerModal(true);
+          addComm(`All out! ${ALL_TEAMS[bowlTeamCode].name} need ${tgt} to win.`,"milestone");
+        }else{
+          const deficit=target-newScores[1].runs-1;
+          const res=`${ALL_TEAMS[bowlTeamCode].name} won by ${deficit} run${deficit!==1?"s":""}!`;
+          setMatchResult(res);addComm(`🏆 Match Over! ${res}`,"milestone");setShowEndModal(true);
+        }
+      }
+      return;
+    }
+
+    setScores(newScores);setBatStats(newBat);setBowlStats(newBowl);setOnField(newOnField);setStrikerSlot(newSlot);
+    if(overEnded&&!inningsOver)triggerBowlerChange(bowlerIdx);
+  };
+
+  // ── Resume after session break ──
+  const resumeSession=()=>{
+    const brk = sessionBreak;
+    if(!brk) return;
+    if(brk.type==="stumps"){
+      // Start new day
+      setTestDay(d=>d+1);
+      setDayOvers(0);
+    }
+    setSessionBreak(null);
+    // Trigger bowler change since it's a new session
+    setBowlerIdx(null);
+    setLastBowlerIdx(null);
+    setShowBowlerModal(true);
+  };
+
+  // ── Reset everything to home ──
+  const goHome=()=>{
+    setScreen("teams");setMatchResult(null);setShowEndModal(false);
+    setTossStep("pick_caller");setTossCallerSlot(null);setTossSide(null);setTossResult(null);setTossWon(null);setTossChoice(null);
+    setInnIdx(0);setBatTeamCode(null);setTarget(null);setScores([{runs:0,wickets:0,overs:0,balls:0},{runs:0,wickets:0,overs:0,balls:0},{runs:0,wickets:0,overs:0,balls:0},{runs:0,wickets:0,overs:0,balls:0}]);
+    setCurOver([]);setAllOvers([[],[],[],[]]);setOnField([0,1]);setStrikerSlot(0);nextBatRef.current=2;
+    setBowlerIdx(null);setLastBowlerIdx(null);setShowBowlerModal(false);setCommentary([]);setRecentBalls([]);
+    setBatStats({});setBowlStats({});setTab("score");
+    setShowFollowOnModal(false);setShowDeclareModal(false);setShowHomeConfirm(false);
+    setTestDay(1);setDayOvers(0);setSessionBreak(null);setSessionSnapshots([]);
+    setSuperOverNum(0);setSuperOverPhase(0);setSuperOverScores([]);setShowSuperOverModal(false);
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  STYLES
+  // ══════════════════════════════════════════════════════════════════════════
+  const G=`
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&family=Space+Mono:wght@400;700&display=swap');
+    *{box-sizing:border-box;}
+    .btn{transition:all .15s;}.btn:hover:not(:disabled){transform:translateY(-2px) scale(1.05);}.btn:active:not(:disabled){transform:scale(.95);}
+    .flash{animation:fl .4s;}@keyframes fl{0%,100%{opacity:1}50%{opacity:.4}}
+    .si{animation:si .28s cubic-bezier(.22,1,.36,1);}@keyframes si{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+    .pd{animation:pd .2s ease;}@keyframes pd{from{transform:translateY(-8px);opacity:0}to{transform:translateY(0);opacity:1}}
+    @keyframes coinFlip{0%{transform:rotateY(0deg) scaleX(1);}25%{transform:rotateY(270deg) scaleX(.2);}50%{transform:rotateY(540deg) scaleX(1);}75%{transform:rotateY(810deg) scaleX(.2);}100%{transform:rotateY(1080deg) scaleX(1);}}
+    @keyframes floatUp{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+    @keyframes resPop{0%{transform:scale(.5);opacity:0;}70%{transform:scale(1.1);}100%{transform:scale(1);opacity:1;}}
+    @keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    .coin-flip{animation:coinFlip 2.2s cubic-bezier(.4,0,.2,1) forwards;}
+    .coin-float{animation:floatUp 2s ease-in-out infinite;}
+    .res-pop{animation:resPop .5s cubic-bezier(.34,1.56,.64,1) forwards;}
+    .gold-text{background:linear-gradient(90deg,#b8860b,#ffd700,#daa520,#ffd700,#b8860b);background-size:200% auto;animation:shimmer 2s linear infinite;-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+  `;
+  const base={background:"linear-gradient(180deg,#060c17,#0a1525)",fontFamily:"'Outfit','Segoe UI',sans-serif",color:"#e0eaf3",minHeight:"100vh"};
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SCREEN 1 — TEAM SELECTION
+  // ══════════════════════════════════════════════════════════════════════════
+  if(screen==="teams"){
+    const ok=teamA&&teamB&&teamA!==teamB;
+    return(
+      <div style={{...base,display:"flex",justifyContent:"center",padding:"16px"}}>
+        <style>{G}</style>
+        <div style={{width:"100%",maxWidth:"420px"}}>
+          <div style={{textAlign:"center",marginBottom:"24px",paddingTop:"12px"}}>
+            <div style={{fontSize:"48px",marginBottom:"6px"}}>🏏</div>
+            <h1 style={{fontSize:"34px",fontWeight:900,color:"#e8f4f8",letterSpacing:"-0.02em",margin:0}}>LIVE<span style={{color:"#3b9eff"}}>SCORE</span></h1>
+            <p style={{color:"#4a7fa5",fontSize:"12px",marginTop:"4px"}}>Professional Cricket Scoring System</p>
+          </div>
+          <div style={{background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:"16px",padding:"18px",marginBottom:"12px"}}>
+            <div style={{fontSize:"11px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",color:"#4a7fa5",marginBottom:"10px"}}>Match Format</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px",marginBottom:"14px"}}>
+              {["T20","ODI","Test"].map(f=>(
+                <button key={f} onClick={()=>setFormat(f)} style={{padding:"10px 0",borderRadius:"12px",fontWeight:700,fontSize:"14px",cursor:"pointer",background:format===f?"#3b9eff":"rgba(255,255,255,.05)",color:format===f?"#fff":"#7ab3d4",border:`1px solid ${format===f?"#3b9eff":"rgba(255,255,255,.08)"}`,transition:"all .2s"}}>{f}</button>
+              ))}
+            </div>
+            <div style={{background:"rgba(59,158,255,.07)",border:"1px solid rgba(59,158,255,.15)",borderRadius:"10px",padding:"8px 12px",fontSize:"11px",color:"#5a8faa"}}>
+              {format==="T20"&&"⚡ 20 overs · Max 4 overs/bowler · No consecutive overs"}
+              {format==="ODI"&&"🌍 50 overs · Max 10 overs/bowler · No consecutive overs"}
+              {format==="Test"&&"🏟 4 innings (2 per team) · No over limit · No consecutive overs · 5-day match"}
+            </div>
+          </div>
+          <div style={{background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:"16px",padding:"18px",marginBottom:"12px"}}>
+            <div style={{fontSize:"11px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",color:"#4a7fa5",marginBottom:"12px"}}>Select Teams</div>
+            <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+              <TeamPicker label="Team 1" selected={teamA} other={teamB} onSelect={setTeamA}/>
+              <div style={{display:"flex",alignItems:"center",gap:"8px"}}><div style={{flex:1,height:"1px",background:"rgba(255,255,255,.08)"}}/><span style={{fontSize:"11px",fontWeight:700,color:"#4a7fa5",letterSpacing:"0.1em"}}>VS</span><div style={{flex:1,height:"1px",background:"rgba(255,255,255,.08)"}}/></div>
+              <TeamPicker label="Team 2" selected={teamB} other={teamA} onSelect={setTeamB}/>
+            </div>
+          </div>
+          {teamA&&teamB&&(
+            <div style={{background:"rgba(59,158,255,.07)",border:"1px solid rgba(59,158,255,.18)",borderRadius:"14px",padding:"12px 16px",marginBottom:"12px",display:"flex",alignItems:"center",justifyContent:"space-between"}} className="pd">
+              <div style={{textAlign:"center"}}><div style={{fontSize:"26px"}}>{ALL_TEAMS[teamA].flag}</div><div style={{fontWeight:700,fontSize:"12px",color:"#3b9eff"}}>{teamA}</div></div>
+              <div style={{fontSize:"18px",color:"#2a4a6a",fontWeight:900}}>VS</div>
+              <div style={{textAlign:"center"}}><div style={{fontSize:"26px"}}>{ALL_TEAMS[teamB].flag}</div><div style={{fontWeight:700,fontSize:"12px",color:"#3b9eff"}}>{teamB}</div></div>
+            </div>
+          )}
+          <button onClick={()=>ok&&setScreen("toss")} disabled={!ok} style={{width:"100%",padding:"15px",borderRadius:"14px",color:"#fff",fontWeight:700,fontSize:"14px",cursor:ok?"pointer":"not-allowed",background:ok?"linear-gradient(135deg,#1a73e8,#0d47a1)":"rgba(255,255,255,.06)",border:"none",boxShadow:ok?"0 4px 20px rgba(27,115,232,.4)":"none",opacity:ok?1:.5,transition:"all .2s"}}>
+            {ok?"PROCEED TO TOSS →":"Select both teams to continue"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SCREEN 2 — TOSS (animated coin flip)
+  // ══════════════════════════════════════════════════════════════════════════
+  if(screen==="toss"){
+    const tA=ALL_TEAMS[teamA],tB=ALL_TEAMS[teamB];
+    const throwCoin=(side)=>{
+      setTossSide(side);setTossStep("flipping");
+      setTimeout(()=>{
+        const landed=Math.random()<.5?"H":"T";
+        setTossResult(landed);
+        const won=landed===side?tossCallerSlot:(tossCallerSlot==="A"?"B":"A");
+        setTossWon(won);setTossStep("result");
+      },2200);
+    };
+    const winnerTeam=tossWon?ALL_TEAMS[tossWon==="A"?teamA:teamB]:null;
+    const canStart=tossWon&&tossChoice;
+    const batTeam=!canStart?null:tossChoice==="bat"?tossWon:(tossWon==="A"?"B":"A");
+    const batCode=batTeam==="A"?teamA:teamB;
+    return(
+      <div style={{...base,display:"flex",justifyContent:"center",padding:"16px",paddingBottom:"40px"}}>
+        <style>{G}</style>
+        <div style={{width:"100%",maxWidth:"420px"}}>
+          <button onClick={()=>{setScreen("teams");setTossStep("pick_caller");setTossCallerSlot(null);setTossSide(null);setTossResult(null);setTossWon(null);setTossChoice(null);}} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:"10px",padding:"8px 14px",color:"#7ab3d4",fontSize:"12px",cursor:"pointer",marginBottom:"18px"}}>← Back</button>
+          <div style={{textAlign:"center",marginBottom:"20px"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"14px",marginBottom:"6px"}}>
+              <div style={{textAlign:"center"}}><div style={{fontSize:"34px"}}>{tA.flag}</div><div style={{fontWeight:700,fontSize:"12px",color:"#3b9eff"}}>{teamA}</div></div>
+              <div style={{fontSize:"12px",fontWeight:900,color:"#2a4a6a",letterSpacing:"0.1em"}}>VS</div>
+              <div style={{textAlign:"center"}}><div style={{fontSize:"34px"}}>{tB.flag}</div><div style={{fontWeight:700,fontSize:"12px",color:"#3b9eff"}}>{teamB}</div></div>
+            </div>
+            <div style={{fontSize:"11px",color:"#4a7fa5",background:"rgba(59,158,255,.08)",padding:"3px 12px",borderRadius:"20px",display:"inline-block"}}>{format} Match · Toss</div>
+          </div>
+
+          {/* Step 1: Pick caller */}
+          {tossStep==="pick_caller"&&(
+            <div style={{background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:"18px",padding:"20px"}} className="si">
+              <div style={{textAlign:"center",marginBottom:"18px"}}>
+                <div style={{fontSize:"28px",marginBottom:"4px"}}>🪙</div>
+                <div style={{fontWeight:800,fontSize:"15px",color:"#e0eaf3",marginBottom:"2px"}}>Who calls the coin?</div>
+                <div style={{fontSize:"11px",color:"#4a7fa5"}}>One team captain will call Heads or Tails</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}>
+                {[["A",teamA,tA],["B",teamB,tB]].map(([slot,code,t])=>(
+                  <button key={slot} onClick={()=>{setTossCallerSlot(slot);setTossStep("pick_side");}} className="btn"
+                    style={{padding:"16px 10px",borderRadius:"14px",cursor:"pointer",border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.05)",display:"flex",flexDirection:"column",alignItems:"center",gap:"5px"}}>
+                    <span style={{fontSize:"30px"}}>{t.flag}</span>
+                    <span style={{fontWeight:700,fontSize:"13px",color:"#dce8f0"}}>{t.name}</span>
+                    <span style={{fontSize:"10px",color:"#4a7fa5",background:"rgba(59,158,255,.1)",padding:"2px 8px",borderRadius:"8px"}}>{code} calls</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Heads or Tails */}
+          {tossStep==="pick_side"&&tossCallerSlot&&(()=>{
+            const caller=ALL_TEAMS[tossCallerSlot==="A"?teamA:teamB],callerCode=tossCallerSlot==="A"?teamA:teamB;
+            return(
+              <div style={{background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:"18px",padding:"20px"}} className="si">
+                <div style={{textAlign:"center",marginBottom:"18px"}}>
+                  <div style={{fontSize:"26px",marginBottom:"3px"}}>{caller.flag}</div>
+                  <div style={{fontWeight:800,fontSize:"15px",color:"#e0eaf3",marginBottom:"2px"}}>{caller.name} calls…</div>
+                  <div style={{fontSize:"11px",color:"#4a7fa5"}}>Pick before the coin is tossed</div>
+                </div>
+                <div style={{display:"flex",justifyContent:"center",marginBottom:"20px"}}>
+                  <div style={{perspective:"600px"}}>
+                    <div className="coin-float" style={{width:"80px",height:"80px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"32px",background:"radial-gradient(circle at 35% 35%,#ffd700,#b8860b)",border:"3px solid #daa520",boxShadow:"0 4px 20px rgba(255,215,0,.3)"}}>🪙</div>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"10px"}}>
+                  {[{side:"H",label:"HEADS",emoji:"👑",color:"#ffd700",bg:"rgba(255,215,0,.12)",border:"rgba(255,215,0,.35)"},{side:"T",label:"TAILS",emoji:"🦅",color:"#a0c8ff",bg:"rgba(100,180,255,.1)",border:"rgba(100,180,255,.3)"}].map(({side,label,emoji,color,bg,border})=>(
+                    <button key={side} onClick={()=>throwCoin(side)} className="btn"
+                      style={{padding:"18px 10px",borderRadius:"14px",cursor:"pointer",background:bg,border:`2px solid ${border}`,display:"flex",flexDirection:"column",alignItems:"center",gap:"6px"}}>
+                      <span style={{fontSize:"28px"}}>{emoji}</span>
+                      <span style={{fontWeight:800,fontSize:"15px",color,letterSpacing:"0.08em"}}>{label}</span>
+                    </button>
+                  ))}
+                </div>
+                <button onClick={()=>{setTossStep("pick_caller");setTossCallerSlot(null);}} style={{width:"100%",padding:"9px",borderRadius:"10px",fontSize:"12px",cursor:"pointer",background:"rgba(255,255,255,.04)",color:"#4a7fa5",border:"1px solid rgba(255,255,255,.08)"}}>← Change caller</button>
+              </div>
+            );
+          })()}
+
+          {/* Step 3: Flipping */}
+          {tossStep==="flipping"&&(
+            <div style={{background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:"18px",padding:"32px 20px",textAlign:"center"}} className="si">
+              <div style={{fontWeight:700,fontSize:"15px",color:"#e0eaf3",marginBottom:"4px"}}>Tossing the coin…</div>
+              <div style={{fontSize:"12px",color:"#4a7fa5",marginBottom:"24px"}}>{ALL_TEAMS[tossCallerSlot==="A"?teamA:teamB].name} called <strong style={{color:"#ffd700"}}>{tossSide==="H"?"HEADS":"TAILS"}</strong></div>
+              <div style={{display:"flex",justifyContent:"center",marginBottom:"20px"}}>
+                <div style={{perspective:"600px"}}>
+                  <div className="coin-flip" style={{width:"100px",height:"100px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"44px",background:"radial-gradient(circle at 35% 35%,#ffd700,#b8860b)",border:"4px solid #daa520",boxShadow:"0 0 40px rgba(255,215,0,.4),0 8px 30px rgba(0,0,0,.6)"}}>🪙</div>
+                </div>
+              </div>
+              <div style={{display:"flex",justifyContent:"center",gap:"6px"}}>{[0,1,2].map(i=><div key={i} style={{width:"6px",height:"6px",borderRadius:"50%",background:"#4a7fa5",animation:`floatUp .8s ease-in-out ${i*.25}s infinite`}}/>)}</div>
+            </div>
+          )}
+
+          {/* Step 4: Result + choice */}
+          {tossStep==="result"&&tossWon&&winnerTeam&&(
+            <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+              <div style={{background:"rgba(255,215,0,.07)",border:"1px solid rgba(255,215,0,.25)",borderRadius:"18px",padding:"20px",textAlign:"center"}} className="res-pop">
+                <div style={{display:"flex",justifyContent:"center",marginBottom:"12px"}}>
+                  <div style={{width:"70px",height:"70px",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"28px",background:tossResult==="H"?"radial-gradient(circle at 35% 35%,#ffd700,#b8860b)":"radial-gradient(circle at 35% 35%,#aac8e4,#4a7fa5)",border:`3px solid ${tossResult==="H"?"#daa520":"#6ab0d8"}`,boxShadow:`0 0 20px ${tossResult==="H"?"rgba(255,215,0,.5)":"rgba(100,180,255,.4)"}`}}>{tossResult==="H"?"👑":"🦅"}</div>
+                </div>
+                <div style={{fontWeight:900,fontSize:"20px",marginBottom:"3px"}} className="gold-text">{tossResult==="H"?"HEADS!":"TAILS!"}</div>
+                <div style={{fontSize:"11px",color:"#4a7fa5",marginBottom:"12px"}}>{ALL_TEAMS[tossCallerSlot==="A"?teamA:teamB].name} called <strong style={{color:"#ffd700"}}>{tossSide==="H"?"HEADS":"TAILS"}</strong> — landed <strong style={{color:tossResult==="H"?"#ffd700":"#a0c8ff"}}>{tossResult==="H"?"HEADS":"TAILS"}</strong></div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"10px",padding:"10px 14px",borderRadius:"12px",background:tossSide===tossResult?"rgba(64,200,120,.12)":"rgba(255,100,100,.1)",border:`1px solid ${tossSide===tossResult?"rgba(64,200,120,.3)":"rgba(255,100,100,.25)"}`}}>
+                  <span style={{fontSize:"24px"}}>{winnerTeam.flag}</span>
+                  <div><div style={{fontWeight:800,fontSize:"14px",color:tossSide===tossResult?"#40c878":"#ff7777"}}>{winnerTeam.name} wins the toss!</div><div style={{fontSize:"10px",color:"#4a7fa5"}}>{tossSide===tossResult?"Called it correctly ✓":"Opponent mis-called"}</div></div>
+                  <span style={{fontSize:"18px"}}>{tossSide===tossResult?"🎉":"🔄"}</span>
+                </div>
+              </div>
+              <div style={{background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:"16px",padding:"18px"}} className="si">
+                <div style={{textAlign:"center",marginBottom:"14px",fontWeight:700,fontSize:"13px",color:"#e0eaf3"}}>{winnerTeam.flag} {winnerTeam.name} elects to…</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}>
+                  {[{c:"bat",icon:"🏏",label:"BAT FIRST",color:"#40c878",bg:"rgba(64,200,120,.15)",border:"rgba(64,200,120,.4)"},{c:"bowl",icon:"⚾",label:"BOWL FIRST",color:"#ff9a3c",bg:"rgba(255,154,60,.15)",border:"rgba(255,154,60,.4)"}].map(({c,icon,label,color,bg,border})=>(
+                    <button key={c} onClick={()=>setTossChoice(c)} className="btn"
+                      style={{padding:"14px 10px",borderRadius:"14px",cursor:"pointer",background:tossChoice===c?bg:"rgba(255,255,255,.04)",border:`2px solid ${tossChoice===c?border:"rgba(255,255,255,.08)"}`,display:"flex",flexDirection:"column",alignItems:"center",gap:"5px",transition:"all .2s"}}>
+                      <span style={{fontSize:"24px"}}>{icon}</span>
+                      <span style={{fontWeight:800,fontSize:"13px",color:tossChoice===c?color:"#dce8f0",letterSpacing:"0.05em"}}>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {canStart&&batCode&&(
+                <div style={{background:"rgba(64,200,120,.08)",border:"1px solid rgba(64,200,120,.2)",borderRadius:"10px",padding:"9px 14px",fontSize:"12px",color:"#40c878",textAlign:"center"}} className="pd">
+                  {ALL_TEAMS[batCode].flag} <strong>{ALL_TEAMS[batCode].name}</strong> will bat first
+                </div>
+              )}
+              <button onClick={()=>canStart&&batCode&&initMatch(batCode)} disabled={!canStart}
+                style={{width:"100%",padding:"15px",borderRadius:"14px",color:"#fff",fontWeight:700,fontSize:"14px",cursor:canStart?"pointer":"not-allowed",background:canStart?"linear-gradient(135deg,#1a73e8,#0d47a1)":"rgba(255,255,255,.06)",border:"none",boxShadow:canStart?"0 4px 20px rgba(27,115,232,.4)":"none",opacity:canStart?1:.5,transition:"all .2s"}}>
+                {canStart?"START MATCH 🏏":"Select bat or bowl to continue"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SCREEN 3 — PLAYING
+  // ══════════════════════════════════════════════════════════════════════════
+  if(!batTeamCode||!bowlTeamCode)return null;
+  const batPlayers  = batStats[batTeamCode]?.[innIdx]||[];
+  const bowlPlayers = bowlStats[bowlTeamCode]?.[innIdx]||[];
+  const curBowler   = bowlerIdx!==null?bowlPlayers[bowlerIdx]:null;
+  const tBat=ALL_TEAMS[batTeamCode],tBowl=ALL_TEAMS[bowlTeamCode];
+  const crrV=crr(),rrrV=rrr(),remBalls=ballsRemaining(),remRuns=runsNeeded();
+  const inningLabel=superOverNum>0?`⚡ Super Over ${superOverNum}`:(format==="Test"?`Inn ${innIdx+1}/4`:(innIdx===0?"1st Inn":"2nd Inn"));
+
+  return(
+    <div style={{...base,paddingBottom:"40px"}}>
+      <style>{G}</style>
+
+      {/* Header */}
+      <div style={{position:"sticky",top:0,zIndex:40,padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",background:"rgba(6,12,23,.97)",borderBottom:"1px solid rgba(255,255,255,.07)",backdropFilter:"blur(12px)"}}>
+        <button onClick={()=>setShowHomeConfirm(true)} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:"8px",padding:"4px 10px",color:"#7ab3d4",fontSize:"11px",cursor:"pointer"}}>← Home</button>
+        <span style={{fontWeight:900,fontSize:"13px",color:"#e8f4f8"}}>LIVE<span style={{color:"#3b9eff"}}>SCORE</span></span>
+        <div style={{display:"flex",gap:"5px",alignItems:"center"}}>
+          <span style={{fontSize:"10px",padding:"3px 7px",borderRadius:"20px",fontWeight:600,background:"rgba(59,158,255,.15)",color:"#3b9eff"}}>{format}</span>
+          {!matchResult&&<div style={{display:"flex",alignItems:"center",gap:"4px",padding:"3px 7px",borderRadius:"20px",fontSize:"10px",fontWeight:700,background:"rgba(255,50,50,.15)",color:"#ff4444",border:"1px solid rgba(255,50,50,.25)"}}>
+            <div style={{width:"5px",height:"5px",borderRadius:"50%",background:"#ff4444",animation:"pulse 1s infinite"}}/>LIVE
+          </div>}
+        </div>
+      </div>
+
+      {/* Match Result Banner (shown in-page) */}
+      {matchResult&&(
+        <div style={{margin:"10px 14px",padding:"14px",borderRadius:"16px",textAlign:"center",background:"linear-gradient(135deg,rgba(59,158,255,.2),rgba(100,200,120,.1))",border:"1px solid rgba(59,158,255,.4)"}} className="si">
+          <div style={{fontSize:"28px",marginBottom:"4px"}}>🏆</div>
+          <div style={{fontWeight:900,fontSize:"17px",color:"#e8f4f8",marginBottom:"2px"}}>{matchResult}</div>
+          <div style={{fontSize:"11px",color:"#4a7fa5",marginBottom:"12px"}}>{ALL_TEAMS[teamA].flag} {teamA} vs {ALL_TEAMS[teamB].flag} {teamB} · {format}</div>
+          <button onClick={()=>setShowEndModal(true)} style={{padding:"10px 24px",borderRadius:"12px",fontWeight:700,fontSize:"13px",cursor:"pointer",background:"linear-gradient(135deg,#1a73e8,#0d47a1)",color:"#fff",border:"none",boxShadow:"0 3px 12px rgba(27,115,232,.4)"}}>View Summary & Return</button>
+        </div>
+      )}
+
+      {/* Test innings tabs */}
+      {format==="Test"&&(
+        <div style={{margin:"8px 14px",display:"flex",gap:"4px"}}>
+          {Array.from({length:4}).map((_,i)=>{
+            const bc=batOrder[i],filled=i<innIdx||(i===innIdx&&sc.balls>0)||scores[i].runs>0;
+            return(
+              <div key={i} style={{flex:1,padding:"5px 4px",borderRadius:"8px",textAlign:"center",fontSize:"10px",background:i===innIdx?"rgba(59,158,255,.2)":filled?"rgba(255,255,255,.06)":"rgba(255,255,255,.03)",border:`1px solid ${i===innIdx?"rgba(59,158,255,.4)":"rgba(255,255,255,.07)"}`,color:i===innIdx?"#3b9eff":filled?"#8ab4cc":"#2a4a6a"}}>
+                <div style={{fontWeight:700}}>Inn {i+1}</div>
+                {bc&&<div style={{fontSize:"9px"}}>{bc} {scores[i].runs}/{scores[i].wickets}</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Test Day/Session strip */}
+      {format==="Test" && (
+        <div style={{margin:"6px 14px 0",display:"flex",gap:"6px",flexWrap:"wrap"}}>
+          <div style={{padding:"4px 10px",borderRadius:"20px",fontSize:"10px",fontWeight:700,background:"rgba(255,140,0,.12)",border:"1px solid rgba(255,140,0,.25)",color:"#ff9a3c"}}>
+            📅 Day {testDay}/5
+          </div>
+          <div style={{padding:"4px 10px",borderRadius:"20px",fontSize:"10px",fontWeight:600,background:"rgba(59,158,255,.1)",border:"1px solid rgba(59,158,255,.2)",color:"#7ab3d4"}}>
+            {dayOvers<30?"🌅 Morning":dayOvers<60?"☀️ Afternoon":"🌇 Evening"} · Over {dayOvers}/
+            {dayOvers<30?30:dayOvers<60?60:90}
+          </div>
+          <div style={{padding:"4px 10px",borderRadius:"20px",fontSize:"10px",fontWeight:600,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.08)",color:"#4a7fa5"}}>
+            Next: {dayOvers<30?`Lunch (${30-dayOvers} ov)`:dayOvers<60?`Tea (${60-dayOvers} ov)`:`Stumps (${90-dayOvers} ov)`}
+          </div>
+        </div>
+      )}
+
+      {/* Super Over Banner */}
+      {superOverNum>0&&!matchResult&&(
+        <div style={{margin:"6px 14px 0",padding:"10px 14px",borderRadius:"14px",background:"linear-gradient(135deg,rgba(255,215,0,.15),rgba(255,140,0,.1))",border:"1px solid rgba(255,215,0,.35)",display:"flex",alignItems:"center",justifyContent:"space-between"}} className="pd">
+          <div>
+            <div style={{fontWeight:900,fontSize:"14px",color:"#ffd700"}}>⚡ SUPER OVER {superOverNum}</div>
+            <div style={{fontSize:"10px",color:"#cc9900",marginTop:"1px"}}>{superOverPhase===0?"1st bat — 1 over each":"2nd bat — chasing!"}</div>
+          </div>
+          {superOverScores.length>0&&(
+            <div style={{textAlign:"right"}}>
+              {superOverScores.map((s,i)=>(
+                <div key={i} style={{fontSize:"10px",fontFamily:"monospace",color:"#a88000"}}>{ALL_TEAMS[s.team]?.flag} {s.runs}/{s.wickets}</div>
+              ))}
+            </div>
+          )}
+          {target&&superOverPhase===1&&(
+            <div style={{textAlign:"right",fontFamily:"monospace"}}>
+              <div style={{fontSize:"11px",color:"#ffd700",fontWeight:700}}>Need {runsNeeded()}</div>
+              <div style={{fontSize:"10px",color:"#a88000"}}>{ballsRemaining()} balls</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Scoreboard */}
+      <div style={{margin:"8px 14px",borderRadius:"18px",padding:"14px",background:"linear-gradient(135deg,rgba(27,115,232,.12),rgba(10,22,40,.85))",border:"1px solid rgba(59,158,255,.22)"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"10px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"7px"}}>
+            <span style={{fontSize:"20px"}}>{tBat.flag}</span>
+            <div><div style={{fontSize:"10px",color:"#4a7fa5"}}>Batting</div><div style={{fontWeight:700,fontSize:"12px"}}>{batTeamCode}</div></div>
+          </div>
+          <div style={{textAlign:"center"}} className={flashScore?"flash":""}>
+            <div style={{fontSize:"38px",fontWeight:900,fontFamily:"'Space Mono',monospace",lineHeight:1}}>{sc.runs}<span style={{color:"#4a7fa5"}}>/{sc.wickets}</span></div>
+            <div style={{fontSize:"10px",fontFamily:"'Space Mono',monospace",color:"#4a7fa5"}}>{sc.overs}.{sc.balls} Ov · {inningLabel}</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:"10px",color:"#4a7fa5"}}>Bowling</div>
+            <div style={{fontWeight:700,fontSize:"12px"}}>{bowlTeamCode}</div>
+            <span style={{fontSize:"20px"}}>{tBowl.flag}</span>
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"6px",marginBottom:"10px"}}>
+          <div style={{borderRadius:"10px",padding:"7px",textAlign:"center",background:"rgba(255,255,255,.05)"}}>
+            <div style={{fontSize:"10px",color:"#4a7fa5"}}>CRR</div>
+            <div style={{fontWeight:700,fontSize:"13px",fontFamily:"'Space Mono',monospace"}}>{crrV}</div>
+          </div>
+          {rrrV?(
+            <div style={{borderRadius:"10px",padding:"7px",textAlign:"center",background:"rgba(255,140,0,.1)",border:"1px solid rgba(255,140,0,.2)"}}>
+              <div style={{fontSize:"10px",color:"#ff8c00"}}>RRR</div>
+              <div style={{fontWeight:700,fontSize:"13px",fontFamily:"'Space Mono',monospace",color:"#ff8c00"}}>{rrrV}</div>
+            </div>
+          ):(
+            <div style={{borderRadius:"10px",padding:"7px",textAlign:"center",background:"rgba(255,255,255,.05)"}}>
+              <div style={{fontSize:"10px",color:"#4a7fa5"}}>Inn</div>
+              <div style={{fontWeight:700,fontSize:"13px"}}>{inningLabel}</div>
+            </div>
+          )}
+          {/* 3rd box: Need / Balls left / regular balls */}
+          {target&&innIdx>=(format==="Test"?3:1)&&remRuns!==null?(
+            <div style={{borderRadius:"10px",padding:"7px",textAlign:"center",background:"rgba(64,200,120,.1)",border:"1px solid rgba(64,200,120,.2)"}}>
+              <div style={{fontSize:"10px",color:"#40c878"}}>Need</div>
+              <div style={{fontWeight:700,fontSize:"13px",fontFamily:"'Space Mono',monospace",color:"#40c878"}}>{remRuns}</div>
+            </div>
+          ):(
+            <div style={{borderRadius:"10px",padding:"7px",textAlign:"center",background:"rgba(255,255,255,.05)"}}>
+              <div style={{fontSize:"10px",color:"#4a7fa5"}}>Balls</div>
+              <div style={{fontWeight:700,fontSize:"13px",fontFamily:"'Space Mono',monospace"}}>{sc.overs*6+sc.balls}</div>
+            </div>
+          )}
+        </div>
+
+        {/* ★ Runs + Balls remaining box (chasing) */}
+        {target&&remRuns!==null&&!matchResult&&(superOverNum>0||innIdx===1||(format==="Test"&&innIdx===3))&&(
+          format==="Test"&&innIdx===3?(
+            /* Test 4th innings: dual perspective */
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px",marginBottom:"10px"}} className="pd">
+              <div style={{borderRadius:"10px",padding:"8px",textAlign:"center",background:"rgba(255,154,60,.1)",border:"1px solid rgba(255,154,60,.25)"}}>
+                <div style={{fontSize:"9px",color:"#ff9a3c",fontWeight:600}}>{ALL_TEAMS[batTeamCode].flag} NEED TO WIN</div>
+                <div style={{fontWeight:900,fontSize:"20px",fontFamily:"'Space Mono',monospace",color:"#ff9a3c",lineHeight:1}}>{remRuns} runs</div>
+              </div>
+              <div style={{borderRadius:"10px",padding:"8px",textAlign:"center",background:"rgba(255,68,68,.1)",border:"1px solid rgba(255,68,68,.25)"}}>
+                <div style={{fontSize:"9px",color:"#ff6666",fontWeight:600}}>{ALL_TEAMS[bowlTeamCode].flag} NEED TO WIN</div>
+                <div style={{fontWeight:900,fontSize:"20px",fontFamily:"'Space Mono',monospace",color:"#ff6666",lineHeight:1}}>{10-sc.wickets} wkts</div>
+              </div>
+            </div>
+          ):(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px",marginBottom:"10px"}} className="pd">
+              <div style={{borderRadius:"10px",padding:"8px",textAlign:"center",background:"rgba(255,154,60,.1)",border:"1px solid rgba(255,154,60,.25)"}}>
+                <div style={{fontSize:"10px",color:"#ff9a3c"}}>Runs to Win</div>
+                <div style={{fontWeight:900,fontSize:"22px",fontFamily:"'Space Mono',monospace",color:"#ff9a3c",lineHeight:1}}>{remRuns}</div>
+              </div>
+              <div style={{borderRadius:"10px",padding:"8px",textAlign:"center",background:"rgba(162,100,255,.1)",border:"1px solid rgba(162,100,255,.25)"}}>
+                <div style={{fontSize:"10px",color:"#c084fc"}}>Balls Left</div>
+                <div style={{fontWeight:900,fontSize:"22px",fontFamily:"'Space Mono',monospace",color:"#c084fc",lineHeight:1}}>{remBalls??"-"}</div>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* Current over */}
+        <div>
+          <div style={{fontSize:"10px",marginBottom:"5px",color:"#4a7fa5"}}>This Over{curBowler?<span style={{color:"#6ab0d8"}}> · {curBowler.name}</span>:null}</div>
+          <div style={{display:"flex",gap:"5px",flexWrap:"wrap",minHeight:"30px"}}>
+            {curOver.length===0?<span style={{fontSize:"11px",fontStyle:"italic",color:"#2a4a6a",alignSelf:"center"}}>Over not started</span>:curOver.map((b,i)=><BallChip key={i} outcome={b}/>)}
+          </div>
+        </div>
+      </div>
+
+      {/* On-field players */}
+      {!matchResult&&(
+        <div style={{margin:"0 14px",display:"flex",flexDirection:"column",gap:"7px"}}>
+          {[0,1].map(slot=>{
+            const pIdx=onField[slot],p=batPlayers[pIdx];
+            if(!p)return null;
+            const isStr=slot===strikerSlot,sr=p.balls>0?((p.runs/p.balls)*100).toFixed(0):"0";
+            return(
+              <div key={slot} style={{borderRadius:"12px",padding:"9px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",background:isStr?"rgba(59,158,255,.1)":"rgba(255,255,255,.03)",border:`1px solid ${isStr?"rgba(59,158,255,.35)":"rgba(255,255,255,.06)"}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:"7px"}}>
+                  {isStr&&<div style={{width:"3px",height:"32px",borderRadius:"2px",background:"#3b9eff",flexShrink:0}}/>}
+                  <div>
+                    <div style={{fontSize:"13px",fontWeight:600,display:"flex",alignItems:"center",gap:"5px"}}>{p.name}{isStr&&<span style={{fontSize:"10px",color:"#3b9eff",background:"rgba(59,158,255,.15)",padding:"1px 5px",borderRadius:"6px"}}>★ striker</span>}</div>
+                    <div style={{fontSize:"10px",color:"#4a7fa5"}}>SR:{sr} · 4s:{p.fours} 6s:{p.sixes}</div>
+                  </div>
+                </div>
+                <div style={{textAlign:"right",fontFamily:"'Space Mono',monospace"}}>
+                  <span style={{fontWeight:900,fontSize:"20px"}}>{p.runs}</span>
+                  <span style={{fontSize:"10px",color:"#4a7fa5",marginLeft:"2px"}}>({p.balls})</span>
+                </div>
+              </div>
+            );
+          })}
+          {curBowler?(
+            <div style={{borderRadius:"12px",padding:"9px 12px",background:"rgba(255,68,68,.06)",border:"1px solid rgba(255,68,68,.18)"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"4px"}}>
+                <div><div style={{fontSize:"10px",color:"#ff6666"}}>Bowling · {bowlTeamCode}</div><div style={{fontSize:"13px",fontWeight:600}}>{curBowler.name}</div><div style={{fontSize:"10px",color:"#4a7fa5"}}>{curBowler.overs}.{curBowler.balls%6} ov{format!=="Test"?` · ${maxBowlOv(format)-curBowler.overs} left`:""}</div></div>
+                <div style={{textAlign:"right",fontFamily:"'Space Mono',monospace",fontSize:"12px"}}>
+                  <span style={{color:"#ff6666"}}>{curBowler.wickets}W</span><span style={{color:"#fff",margin:"0 3px"}}>/</span><span>{curBowler.runs}</span>
+                  <div style={{fontSize:"10px",color:"#4a7fa5"}}>Eco:{curBowler.overs>0||(curBowler.balls%6)>0?(curBowler.runs/Math.max((curBowler.overs*6+(curBowler.balls%6))/6,.01)).toFixed(1):"-"}</div>
+                </div>
+              </div>
+              {format!=="Test"&&(<div style={{display:"flex",gap:"2px"}}>{Array.from({length:Math.min(maxBowlOv(format),10)}).map((_,j)=><div key={j} style={{flex:1,height:"3px",borderRadius:"2px",background:j<curBowler.overs?"#3b9eff":j===curBowler.overs&&(curBowler.balls%6)>0?"rgba(59,158,255,.35)":"rgba(255,255,255,.1)"}}/>)}{maxBowlOv(format)>10&&<span style={{fontSize:"9px",color:"#4a7fa5",marginLeft:"3px"}}>{curBowler.overs}/{maxBowlOv(format)}</span>}</div>)}
+            </div>
+          ):(
+            <div style={{borderRadius:"12px",padding:"10px",textAlign:"center",background:"rgba(255,68,68,.06)",border:"1px solid rgba(255,68,68,.2)"}}>
+              <div style={{fontSize:"12px",fontWeight:600,color:"#ff6666"}}>No bowler selected</div>
+              <button onClick={()=>setShowBowlerModal(true)} style={{marginTop:"5px",padding:"5px 14px",borderRadius:"8px",fontSize:"11px",fontWeight:700,background:"rgba(255,68,68,.2)",color:"#ff8888",border:"1px solid rgba(255,68,68,.3)",cursor:"pointer"}}>Select Bowler</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Ball Buttons */}
+      {!matchResult&&(
+        <div style={{margin:"10px 14px 0"}}>
+          {bowlerIdx===null&&<div style={{textAlign:"center",padding:"7px",borderRadius:"8px",fontSize:"11px",background:"rgba(255,68,68,.1)",color:"#ff7777",border:"1px solid rgba(255,68,68,.2)",marginBottom:"7px"}}>⚠️ Select a bowler before scoring</div>}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"6px",marginBottom:"6px"}}>
+            {[0,1,2,3].map(r=>(
+              <button key={r} onClick={()=>processBall(r)} disabled={bowlerIdx===null} className="btn"
+                style={{padding:"11px 0",borderRadius:"10px",fontWeight:700,fontSize:"15px",cursor:bowlerIdx===null?"not-allowed":"pointer",background:r===0?"rgba(255,255,255,.06)":"rgba(59,158,255,.1)",color:r===0?"#555":"#7eb3e8",border:`1px solid ${r===0?"rgba(255,255,255,.08)":"rgba(59,158,255,.2)"}`,opacity:bowlerIdx===null?.4:1}}>
+                {r===0?"·":r}
+              </button>
+            ))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"6px",marginBottom:"6px"}}>
+            {[{o:4,bg:"rgba(64,200,120,.15)",c:"#40c878",b:"rgba(64,200,120,.3)",l:"4"},{o:6,bg:"rgba(255,154,60,.15)",c:"#ff9a3c",b:"rgba(255,154,60,.3)",l:"6"},{o:"W",bg:"rgba(255,68,68,.15)",c:"#ff4444",b:"rgba(255,68,68,.3)",l:"W"},{o:"Nb",bg:"rgba(255,140,0,.12)",c:"#ff8c00",b:"rgba(255,140,0,.25)",l:"NB"}].map(({o,bg,c,b,l})=>(
+              <button key={o} onClick={()=>processBall(o)} disabled={bowlerIdx===null} className="btn"
+                style={{padding:"11px 0",borderRadius:"10px",fontWeight:700,fontSize:"14px",cursor:bowlerIdx===null?"not-allowed":"pointer",background:bg,color:c,border:`1px solid ${b}`,opacity:bowlerIdx===null?.4:1}}>{l}</button>
+            ))}
+          </div>
+          {/* Wides */}
+          <div style={{marginTop:"6px"}}>
+            <div style={{fontSize:"10px",fontWeight:600,color:"#c8c800",marginBottom:"4px",letterSpacing:"0.06em"}}>WIDES</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:"5px"}}>
+              {["Wd","Wd1","Wd2","Wd3","Wd4"].map(o=>(
+                <button key={o} onClick={()=>processBall(o)} disabled={bowlerIdx===null} className="btn"
+                  style={{padding:"8px 0",borderRadius:"9px",fontWeight:700,fontSize:"11px",cursor:bowlerIdx===null?"not-allowed":"pointer",background:"rgba(232,232,0,.1)",color:"#e8e800",border:"1px solid rgba(232,232,0,.22)",opacity:bowlerIdx===null?.4:1}}>
+                  {o}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Leg Byes */}
+          <div style={{marginTop:"6px"}}>
+            <div style={{fontSize:"10px",fontWeight:600,color:"#7a7a9a",marginBottom:"4px",letterSpacing:"0.06em"}}>LEG BYES</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"5px"}}>
+              {[1,2,3,4].map(r=>(
+                <button key={r} onClick={()=>processBall(`Lb${r}`)} disabled={bowlerIdx===null} className="btn"
+                  style={{padding:"9px 0",borderRadius:"9px",fontWeight:700,fontSize:"13px",cursor:bowlerIdx===null?"not-allowed":"pointer",background:"rgba(122,122,154,.12)",color:"#9a9ac8",border:"1px solid rgba(122,122,154,.25)",opacity:bowlerIdx===null?.4:1}}>
+                  Lb{r}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Byes */}
+          <div style={{marginTop:"6px"}}>
+            <div style={{fontSize:"10px",fontWeight:600,color:"#6aaa6a",marginBottom:"4px",letterSpacing:"0.06em"}}>BYES</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"5px"}}>
+              {[1,2,3,4].map(r=>(
+                <button key={r} onClick={()=>processBall(`By${r}`)} disabled={bowlerIdx===null} className="btn"
+                  style={{padding:"9px 0",borderRadius:"9px",fontWeight:700,fontSize:"13px",cursor:bowlerIdx===null?"not-allowed":"pointer",background:"rgba(106,170,106,.12)",color:"#80c880",border:"1px solid rgba(106,170,106,.25)",opacity:bowlerIdx===null?.4:1}}>
+                  By{r}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Declare button — Test match only, not in 4th innings */}
+          {(format==="Test" && innIdx<=2 && !matchResult) ? (
+            <div style={{marginTop:"8px"}}>
+              <button onClick={()=>setShowDeclareModal(true)} className="btn"
+                style={{width:"100%",padding:"10px",borderRadius:"10px",fontWeight:700,fontSize:"12px",cursor:"pointer",background:"rgba(255,215,0,.1)",color:"#ffd700",border:"1px solid rgba(255,215,0,.3)",letterSpacing:"0.05em"}}>
+                🏳️ DECLARE INNINGS ({sc.runs}/{sc.wickets})
+              </button>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div style={{margin:"10px 14px 0"}}>
+        <div style={{display:"flex",gap:"3px",padding:"4px",borderRadius:"12px",marginBottom:"10px",background:"rgba(255,255,255,.04)"}}>
+          {["score","bowling","overs","commentary"].map(t=>(
+            <button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:"7px 3px",borderRadius:"9px",fontSize:"11px",fontWeight:600,cursor:"pointer",textTransform:"capitalize",background:tab===t?"rgba(59,158,255,.2)":"transparent",color:tab===t?"#3b9eff":"#4a7fa5",border:"none"}}>{t}</button>
+          ))}
+        </div>
+
+        {/* Batting scorecard */}
+        {tab==="score"&&(
+          <div style={{borderRadius:"12px",overflow:"hidden",border:"1px solid rgba(255,255,255,.08)"}}>
+            <div style={{padding:"8px 12px",fontSize:"11px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",background:"rgba(59,158,255,.12)",color:"#3b9eff"}}>{tBat.flag} {batTeamCode} · Innings {innIdx+1}</div>
+            <div style={{display:"grid",gridTemplateColumns:"4fr 4fr 2fr 2fr",padding:"5px 10px",fontSize:"10px",color:"#4a7fa5"}}><span>Batter</span><span style={{fontSize:"9px"}}>Dismissal</span><span style={{textAlign:"right"}}>R(B)</span><span style={{textAlign:"right"}}>SR</span></div>
+            {batPlayers.map((p,i)=>{
+              const shown=onField.includes(i)||p.out||i<nextBatRef.current;
+              if(!shown)return null;
+              const sr=p.balls>0?((p.runs/p.balls)*100).toFixed(0):"-",isOF=onField.includes(i)&&!p.out;
+              return(<div key={i} style={{display:"grid",gridTemplateColumns:"4fr 4fr 2fr 2fr",padding:"7px 10px",fontSize:"11px",borderTop:"1px solid rgba(255,255,255,.04)",opacity:p.out?.6:1,background:isOF?"rgba(59,158,255,.05)":"transparent"}}>
+                <span style={{fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}{i===striker&&!p.out&&" ★"}</span>
+                <span style={{fontSize:"9px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:p.out?"#ff5555":"#4a7fa5"}}>{p.out?p.wicketInfo:isOF?"batting":"yet to bat"}</span>
+                <span style={{textAlign:"right",fontFamily:"monospace",fontWeight:700}}>{p.runs}({p.balls})</span>
+                <span style={{textAlign:"right",color:"#4a7fa5"}}>{sr}</span>
+              </div>);
+            })}
+          </div>
+        )}
+
+        {/* Bowling */}
+        {tab==="bowling"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+            <div style={{borderRadius:"12px",overflow:"hidden",border:"1px solid rgba(255,255,255,.08)"}}>
+              <div style={{padding:"8px 12px",fontSize:"11px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",background:"rgba(255,68,68,.1)",color:"#ff6666"}}>{tBowl.flag} {bowlTeamCode} · Bowling</div>
+              <div style={{display:"grid",gridTemplateColumns:"4fr 2fr 2fr 2fr 2fr",padding:"5px 10px",fontSize:"10px",color:"#4a7fa5"}}><span>Bowler</span><span style={{textAlign:"center"}}>O</span><span style={{textAlign:"center"}}>R</span><span style={{textAlign:"center"}}>W</span><span style={{textAlign:"center"}}>Eco</span></div>
+              {bowlPlayers.map((p,i)=>{
+                const isWK=i===ALL_TEAMS[bowlTeamCode].wkIdx,isCurr=i===bowlerIdx,isLast=i===lastBowlerIdx,full=format!=="Test"&&p.overs>=maxBowlOv(format);
+                const eco=p.overs>0||(p.balls%6)>0?(p.runs/Math.max((p.overs*6+(p.balls%6))/6,.01)).toFixed(1):"-";
+                return(<div key={i} style={{display:"grid",gridTemplateColumns:"4fr 2fr 2fr 2fr 2fr",padding:"7px 10px",fontSize:"11px",borderTop:"1px solid rgba(255,255,255,.04)",opacity:isWK?.35:1,background:isCurr?"rgba(255,68,68,.07)":"transparent"}}>
+                  <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500,display:"flex",alignItems:"center",gap:"3px"}}>
+                    {p.name}{isWK&&<span style={{fontSize:"8px",color:"#555",background:"rgba(255,255,255,.06)",padding:"0 3px",borderRadius:"3px"}}>WK</span>}
+                    {isCurr&&<span style={{fontSize:"8px",color:"#ff6666"}}>▶</span>}
+                    {isLast&&!isCurr&&<span style={{fontSize:"8px",color:"#ff8c00",background:"rgba(255,140,0,.1)",padding:"0 3px",borderRadius:"3px"}}>last</span>}
+                    {full&&!isCurr&&<span style={{fontSize:"8px",color:"#ff4444",background:"rgba(255,68,68,.1)",padding:"0 3px",borderRadius:"3px"}}>full</span>}
+                  </span>
+                  <span style={{textAlign:"center",fontFamily:"monospace"}}>{p.overs}.{p.balls%6}</span>
+                  <span style={{textAlign:"center",fontFamily:"monospace"}}>{p.runs}</span>
+                  <span style={{textAlign:"center",fontFamily:"monospace",fontWeight:700,color:p.wickets>0?"#ff6666":"inherit"}}>{p.wickets}</span>
+                  <span style={{textAlign:"center",fontFamily:"monospace",fontSize:"10px",color:eco==="-"?"#4a7fa5":parseFloat(eco)<6?"#40c878":parseFloat(eco)<9?"#e8e800":"#ff6666"}}>{eco}</span>
+                </div>);
+              })}
+            </div>
+            <div style={{borderRadius:"10px",padding:"9px 12px",fontSize:"11px",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",color:"#3a6a8a"}}>
+              <strong style={{color:"#4a7fa5"}}>Rules: </strong>
+              {format==="T20"&&"Max 4 overs · No consecutive overs · WK can't bowl"}
+              {format==="ODI"&&"Max 10 overs · No consecutive overs · WK can't bowl"}
+              {format==="Test"&&"No over limit · No consecutive overs · WK can't bowl"}
+            </div>
+          </div>
+        )}
+
+        {/* Overs */}
+        {tab==="overs"&&(
+          <div>
+            <div style={{borderRadius:"12px",padding:"10px",marginBottom:"8px",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}>
+              <div style={{fontSize:"11px",marginBottom:"5px",color:"#4a7fa5"}}>Runs Per Over</div>
+              <RunChart overs={allOvers[innIdx]}/>
+            </div>
+            <div style={{borderRadius:"12px",overflow:"hidden",border:"1px solid rgba(255,255,255,.08)"}}>
+              <div style={{padding:"8px 12px",fontSize:"11px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",background:"rgba(255,255,255,.04)",color:"#4a7fa5"}}>Over by Over</div>
+              <div style={{maxHeight:"240px",overflowY:"auto",padding:"2px 10px"}}>
+                {allOvers[innIdx].length===0?<p style={{fontSize:"11px",padding:"14px 0",textAlign:"center",color:"#2a4a6a"}}>No completed overs yet</p>:[...allOvers[innIdx]].reverse().map((ov,i)=><OverRow key={i} over={ov.balls} num={allOvers[innIdx].length-i} bowlerName={bowlPlayers[ov.bowlerIdx]?.name}/>)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Commentary */}
+        {tab==="commentary"&&(
+          <div style={{borderRadius:"12px",overflow:"hidden",border:"1px solid rgba(255,255,255,.08)"}}>
+            <div style={{padding:"8px 12px",fontSize:"11px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",background:"rgba(255,255,255,.04)",color:"#4a7fa5"}}>Live Commentary</div>
+            <div style={{maxHeight:"300px",overflowY:"auto"}}>
+              {commentary.map((c,i)=>(
+                <div key={c.id} className={i===0?"si":""} style={{padding:"9px 12px",borderBottom:"1px solid rgba(255,255,255,.04)",display:"flex",gap:"9px",background:c.type==="wicket"?"rgba(255,68,68,.05)":c.type==="six"?"rgba(255,154,60,.05)":c.type==="four"?"rgba(64,200,120,.05)":c.type==="single"?"rgba(59,158,255,.04)":c.type==="milestone"?"rgba(59,158,255,.08)":"transparent"}}>
+                  <span style={{fontSize:"10px",fontFamily:"monospace",color:"#4a7fa5",flexShrink:0,marginTop:"1px"}}>{c.over}</span>
+                  <span style={{fontSize:"11px",lineHeight:1.5,color:c.type==="wicket"?"#ff7777":c.type==="six"?"#ff9a3c":c.type==="four"?"#40c878":c.type==="single"?"#7eb3e8":c.type==="milestone"?"#3b9eff":"#9ab8cc"}}>{c.text}</span>
+                </div>
+              ))}
+              {commentary.length===0&&<p style={{fontSize:"11px",padding:"20px",textAlign:"center",color:"#2a4a6a"}}>Commentary will appear here</p>}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Recent balls */}
+      <div style={{margin:"8px 14px 0"}}>
+        <div style={{fontSize:"10px",marginBottom:"5px",color:"#4a7fa5"}}>Recent deliveries</div>
+        <div style={{display:"flex",gap:"4px",flexWrap:"wrap"}}>{recentBalls.slice(-20).reverse().map((b,i)=><BallChip key={i} outcome={b} small/>)}</div>
+      </div>
+
+      {/* Bowler Modal */}
+      {showBowlerModal&&!matchResult&&(
+        <BowlerModal teamCode={bowlTeamCode} format={format} bowlStats={bowlPlayers} lastBowlerIdx={lastBowlerIdx} onSelect={(idx)=>{setBowlerIdx(idx);setShowBowlerModal(false);}}/>
+      )}
+
+      {/* Wicket Modal */}
+      {wicketModal&&(
+        <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"14px",background:"rgba(0,0,0,.85)",backdropFilter:"blur(4px)"}}>
+          <div style={{width:"100%",maxWidth:"360px",borderRadius:"20px",padding:"18px",background:"#0d1b2a",border:"1px solid rgba(255,68,68,.35)"}} className="si">
+            <div style={{textAlign:"center",marginBottom:"14px"}}><div style={{fontSize:"30px",marginBottom:"3px"}}>🚨</div><div style={{fontWeight:900,fontSize:"17px",color:"#ff4444"}}>WICKET!</div><div style={{fontSize:"11px",color:"#4a7fa5"}}>Select dismissal type</div></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"7px",marginBottom:"8px"}}>
+              {WICKET_TYPES.map(t=>(
+                <button key={t} onClick={()=>processWicket(t)} className="btn"
+                  style={{padding:"9px",borderRadius:"10px",fontSize:"12px",fontWeight:600,cursor:"pointer",background:"rgba(255,68,68,.1)",color:"#ff7777",border:"1px solid rgba(255,68,68,.25)"}}>
+                  {t}
+                </button>
+              ))}
+            </div>
+            <button onClick={()=>setWicketModal(false)} style={{width:"100%",padding:"9px",borderRadius:"10px",fontSize:"12px",cursor:"pointer",background:"rgba(255,255,255,.05)",color:"#666",border:"none"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── HOME CONFIRMATION MODAL ── */}
+      {showHomeConfirm && (
+        <div style={{position:"fixed",inset:0,zIndex:70,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px",background:"rgba(0,0,0,.88)",backdropFilter:"blur(6px)"}}>
+          <div style={{width:"100%",maxWidth:"320px",borderRadius:"20px",padding:"24px 20px",background:"#0d1b2a",border:"1px solid rgba(255,100,100,.3)"}} className="si">
+            <div style={{textAlign:"center",marginBottom:"20px"}}>
+              <div style={{fontSize:"36px",marginBottom:"8px"}}>🏠</div>
+              <div style={{fontWeight:900,fontSize:"16px",color:"#e8f4f8",marginBottom:"6px"}}>Return to Home?</div>
+              <div style={{fontSize:"12px",color:"#4a7fa5",lineHeight:1.5}}>The current match will be abandoned and all progress will be lost.</div>
+            </div>
+            <div style={{display:"flex",gap:"10px"}}>
+              <button onClick={()=>setShowHomeConfirm(false)}
+                style={{flex:1,padding:"12px",borderRadius:"12px",fontSize:"13px",fontWeight:600,cursor:"pointer",background:"rgba(255,255,255,.06)",color:"#7ab3d4",border:"1px solid rgba(255,255,255,.12)"}}>
+                Cancel
+              </button>
+              <button onClick={goHome} className="btn"
+                style={{flex:1,padding:"12px",borderRadius:"12px",fontSize:"13px",fontWeight:700,cursor:"pointer",background:"linear-gradient(135deg,#c0392b,#96281b)",color:"#fff",border:"none"}}>
+                Yes, Go Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SESSION BREAK MODAL ── */}
+      {sessionBreak && (
+        <div style={{position:"fixed",inset:0,zIndex:60,display:"flex",alignItems:"center",justifyContent:"center",padding:"12px",background:"rgba(0,0,0,.93)",backdropFilter:"blur(6px)"}}>
+          <div style={{width:"100%",maxWidth:"400px",borderRadius:"22px",overflow:"hidden",background:"#080f1c",border:`1px solid ${sessionBreak.type==="stumps"?"rgba(255,165,0,.4)":sessionBreak.type==="lunch"?"rgba(64,200,120,.4)":"rgba(100,160,255,.4)"}`}} className="si">
+
+            {/* Header */}
+            <div style={{padding:"18px 18px 12px",background:sessionBreak.type==="stumps"?"linear-gradient(135deg,rgba(255,140,0,.18),rgba(255,80,0,.08))":sessionBreak.type==="lunch"?"linear-gradient(135deg,rgba(64,200,120,.15),rgba(0,180,80,.06))":"linear-gradient(135deg,rgba(59,130,246,.15),rgba(100,160,255,.06))",textAlign:"center"}}>
+              <div style={{fontSize:"40px",marginBottom:"6px"}}>{sessionBreak.type==="stumps"?"🌅":sessionBreak.type==="lunch"?"🍽️":"☕"}</div>
+              <div style={{fontWeight:900,fontSize:"20px",color:"#f0f4f8",marginBottom:"3px"}}>
+                {sessionBreak.type==="stumps"?`Day ${sessionBreak.day} — Stumps`:sessionBreak.type==="lunch"?"Lunch Break":"Tea Break"}
+              </div>
+              <div style={{fontSize:"11px",color:"#5a8faa"}}>
+                {sessionBreak.session} · {ALL_TEAMS[sessionBreak.batTeam]?.flag} {sessionBreak.batTeam} batting
+              </div>
+            </div>
+
+            {/* Current Score */}
+            <div style={{padding:"12px 16px 8px"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:"12px",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",marginBottom:"10px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                  <span style={{fontSize:"22px"}}>{ALL_TEAMS[sessionBreak.batTeam]?.flag}</span>
+                  <div>
+                    <div style={{fontSize:"11px",color:"#4a7fa5"}}>Score at {sessionBreak.type==="stumps"?"Stumps":"Break"}</div>
+                    <div style={{fontWeight:900,fontSize:"22px",fontFamily:"monospace",color:"#e8f4f8"}}>{sessionBreak.score.runs}<span style={{color:"#4a7fa5",fontSize:"16px"}}>/{sessionBreak.score.wickets}</span></div>
+                  </div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:"11px",color:"#4a7fa5"}}>{sessionBreak.score.overs} overs</div>
+                  {/* Lead/Trail calculation */}
+                  {(()=>{
+                    const bo=sessionBreak.batOrder, sc=sessionBreak.allScores;
+                    // sum opponent runs across their completed innings
+                    const oppTeam=sessionBreak.bowlTeam;
+                    const oppRuns=bo.slice(0,sessionBreak.innIdx).reduce((sum,t,i)=>t===oppTeam?sum+(sc[i]?.runs||0):sum,0);
+                    const batRuns2=bo.slice(0,sessionBreak.innIdx).reduce((sum,t,i)=>t===sessionBreak.batTeam?sum+(sc[i]?.runs||0):sum,0)+sessionBreak.score.runs;
+                    const diff=batRuns2-oppRuns;
+                    if(sessionBreak.innIdx===0||oppRuns===0)return null;
+                    return(
+                      <div style={{fontSize:"12px",fontWeight:700,color:diff>=0?"#40c878":"#ff6b6b"}}>
+                        {diff>=0?`Lead ${diff}`:`Trail ${Math.abs(diff)}`}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Best bat/bowl performers */}
+              {(()=>{
+                const bats=sessionBreak.batPlayers.filter(p=>p.balls>0).sort((a,b)=>b.runs-a.runs).slice(0,3);
+                const bowls=sessionBreak.bowlPlayers.filter(p=>p.overs>0||p.balls>0).sort((a,b)=>b.wickets-a.wickets||a.runs-b.runs).slice(0,3);
+                const wkts=sessionBreak.score.wickets;
+                return(
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",marginBottom:"10px"}}>
+                    {/* Batters or wicket takers depending on situation */}
+                    <div style={{borderRadius:"10px",padding:"9px",background:"rgba(59,158,255,.07)",border:"1px solid rgba(59,158,255,.15)"}}>
+                      <div style={{fontSize:"10px",fontWeight:700,color:"#3b9eff",textTransform:"uppercase",letterSpacing:".08em",marginBottom:"6px"}}>
+                        {wkts>=5?"🏏 Top Scorer":"🏏 Batters"}
+                      </div>
+                      {bats.length===0?<div style={{fontSize:"10px",color:"#3a6a8a"}}>No data</div>:bats.map((p,i)=>(
+                        <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:"11px",marginBottom:"3px"}}>
+                          <span style={{color:"#c8dce8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"90px"}}>{p.name.split(" ").slice(-1)[0]}</span>
+                          <span style={{fontFamily:"monospace",color:p.out?"#ff6b6b":"#40c878",fontWeight:700}}>{p.runs}{p.out?"":"*"}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{borderRadius:"10px",padding:"9px",background:"rgba(255,68,68,.07)",border:"1px solid rgba(255,68,68,.15)"}}>
+                      <div style={{fontSize:"10px",fontWeight:700,color:"#ff6b6b",textTransform:"uppercase",letterSpacing:".08em",marginBottom:"6px"}}>
+                        ⚡ Bowlers
+                      </div>
+                      {bowls.length===0?<div style={{fontSize:"10px",color:"#5a3a3a"}}>No data</div>:bowls.map((p,i)=>(
+                        <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:"11px",marginBottom:"3px"}}>
+                          <span style={{color:"#c8dce8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"80px"}}>{p.name.split(" ").slice(-1)[0]}</span>
+                          <span style={{fontFamily:"monospace",color:"#ff9a3c",fontWeight:700}}>{p.wickets}/{p.runs}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Pie chart — only on stumps (end of day) */}
+              {sessionBreak.type==="stumps" && sessionSnapshots.length>0 && (()=>{
+                // Gather session data for the current day
+                const daySnaps=sessionSnapshots.filter(s=>s.day===sessionBreak.day);
+                if(daySnaps.length===0)return null;
+                // Compute runs per session by diff
+                const sessions=["Morning Session","Afternoon Session","Evening Session"];
+                const sessionColors=["#3b9eff","#40c878","#ff9a3c"];
+                let prevRuns=0;
+                const sessionRuns=sessions.map((name,si)=>{
+                  const snap=daySnaps.find(s=>s.session===name);
+                  if(!snap)return{name,runs:0,color:sessionColors[si]};
+                  const r=snap.score.runs-prevRuns;
+                  prevRuns=snap.score.runs;
+                  return{name,runs:Math.max(0,r),color:sessionColors[si]};
+                }).filter(s=>s.runs>0);
+                if(sessionRuns.length===0)return null;
+                const total=sessionRuns.reduce((a,b)=>a+b.runs,0);
+                if(total===0)return null;
+                // Simple SVG pie
+                let angle=0;
+                const R=40,CX=50,CY=50;
+                const slices=sessionRuns.map(s=>{
+                  const pct=s.runs/total;
+                  const start=angle;
+                  angle+=pct*2*Math.PI;
+                  const x1=CX+R*Math.sin(start),y1=CY-R*Math.cos(start);
+                  const x2=CX+R*Math.sin(angle),y2=CY-R*Math.cos(angle);
+                  const large=pct>0.5?1:0;
+                  return{...s,pct,path:`M${CX},${CY} L${x1},${y1} A${R},${R},0,${large},1,${x2},${y2} Z`};
+                });
+                return(
+                  <div style={{borderRadius:"12px",padding:"12px",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",marginBottom:"10px"}}>
+                    <div style={{fontSize:"11px",fontWeight:700,color:"#4a7fa5",textTransform:"uppercase",letterSpacing:".08em",marginBottom:"8px"}}>📊 Session Run Distribution</div>
+                    <div style={{display:"flex",alignItems:"center",gap:"14px"}}>
+                      <svg viewBox="0 0 100 100" style={{width:80,height:80,flexShrink:0}}>
+                        {slices.map((s,i)=><path key={i} d={s.path} fill={s.color} stroke="#080f1c" strokeWidth="1.5"/>)}
+                        <circle cx={CX} cy={CY} r="18" fill="#080f1c"/>
+                        <text x={CX} y={CY+4} textAnchor="middle" fill="#e8f4f8" fontSize="9" fontWeight="bold">{total}</text>
+                      </svg>
+                      <div style={{flex:1}}>
+                        {slices.map((s,i)=>(
+                          <div key={i} style={{display:"flex",alignItems:"center",gap:"6px",marginBottom:"5px"}}>
+                            <div style={{width:"10px",height:"10px",borderRadius:"2px",background:s.color,flexShrink:0}}/>
+                            <span style={{fontSize:"10px",color:"#8ab8d4",flex:1}}>{s.name.replace(" Session","")}</span>
+                            <span style={{fontSize:"11px",fontWeight:700,fontFamily:"monospace",color:s.color}}>{s.runs}</span>
+                            <span style={{fontSize:"9px",color:"#4a7fa5"}}>({(s.pct*100).toFixed(0)}%)</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Resume button */}
+              <button onClick={resumeSession} className="btn"
+                style={{width:"100%",padding:"13px",borderRadius:"13px",fontWeight:700,fontSize:"14px",cursor:"pointer",
+                  background:sessionBreak.type==="stumps"?"linear-gradient(135deg,#ff8c00,#e65c00)":sessionBreak.type==="lunch"?"linear-gradient(135deg,#1a7a40,#0d5c2e)":"linear-gradient(135deg,#1a5fa8,#0d3d7a)",
+                  color:"#fff",border:"none",boxShadow:"0 4px 18px rgba(0,0,0,.4)"}}>
+                {sessionBreak.type==="stumps"?`☀️ Start Day ${sessionBreak.day+1}`:sessionBreak.type==="lunch"?"🍽️ Start Afternoon Session":"☕ Start Evening Session"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DECLARE CONFIRMATION MODAL ── */}
+      {showDeclareModal&&!matchResult&&(
+        <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"14px",background:"rgba(0,0,0,.85)",backdropFilter:"blur(4px)"}}>
+          <div style={{width:"100%",maxWidth:"360px",borderRadius:"20px",padding:"20px",background:"#0d1b2a",border:"1px solid rgba(255,215,0,.35)"}} className="si">
+            <div style={{textAlign:"center",marginBottom:"16px"}}>
+              <div style={{fontSize:"32px",marginBottom:"6px"}}>🏳️</div>
+              <div style={{fontWeight:900,fontSize:"17px",color:"#ffd700",marginBottom:"4px"}}>Declare Innings?</div>
+              <div style={{fontSize:"12px",color:"#8ab8d4",marginBottom:"4px"}}>{ALL_TEAMS[batTeamCode]?.flag} {batTeamCode} — {sc.runs}/{sc.wickets} ({sc.overs}.{sc.balls} ov)</div>
+              <div style={{fontSize:"11px",color:"#4a7fa5",background:"rgba(255,215,0,.07)",border:"1px solid rgba(255,215,0,.15)",borderRadius:"8px",padding:"8px",marginTop:"8px"}}>
+                The batting captain voluntarily closes the innings. The opposition will bat next.
+                {innIdx===0 && scores[1].runs===0 && <><br/><br/>⚠️ Declaring in 1st innings means the opponent bats, then you bat 3rd.</>}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}}>
+              <button onClick={()=>setShowDeclareModal(false)} style={{padding:"11px",borderRadius:"12px",fontSize:"13px",cursor:"pointer",background:"rgba(255,255,255,.05)",color:"#7ab3d4",border:"1px solid rgba(255,255,255,.1)"}}>
+                Cancel
+              </button>
+              <button onClick={declareInnings} className="btn"
+                style={{padding:"11px",borderRadius:"12px",fontWeight:700,fontSize:"13px",cursor:"pointer",background:"rgba(255,215,0,.2)",color:"#ffd700",border:"1px solid rgba(255,215,0,.4)"}}>
+                ✓ Declare!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── FOLLOW-ON MODAL ── */}
+      {showFollowOnModal&&!matchResult&&(
+        <div style={{position:"fixed",inset:0,zIndex:52,display:"flex",alignItems:"center",justifyContent:"center",padding:"14px",background:"rgba(0,0,0,.88)",backdropFilter:"blur(5px)"}}>
+          <div style={{width:"100%",maxWidth:"380px",borderRadius:"22px",overflow:"hidden",background:"#0a1525",border:"1px solid rgba(59,158,255,.35)"}} className="si">
+            <div style={{padding:"20px 20px 14px",background:"linear-gradient(135deg,rgba(59,158,255,.15),rgba(255,140,0,.08))",textAlign:"center"}}>
+              <div style={{fontSize:"38px",marginBottom:"6px"}}>⚡</div>
+              <div style={{fontWeight:900,fontSize:"18px",color:"#e8f4f8",marginBottom:"3px"}}>Follow-On!</div>
+              <div style={{fontSize:"12px",color:"#4a7fa5"}}>The opposition trails by {scores[0].runs - scores[1].runs} runs (threshold: {FOLLOW_ON_LEAD})</div>
+            </div>
+            <div style={{padding:"16px"}}>
+              <div style={{background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:"12px",padding:"12px",marginBottom:"14px",fontSize:"11px",color:"#8ab8d4",lineHeight:1.6}}>
+                <strong style={{color:"#e0eaf3"}}>📋 Cricket Rule:</strong><br/>
+                If the team batting second trails by <strong style={{color:"#ffd700"}}>{FOLLOW_ON_LEAD}+ runs</strong> after their 1st innings, the fielding captain may enforce the follow-on — making the opposition bat again immediately without rest.
+              </div>
+              <div style={{fontSize:"12px",fontWeight:600,color:"#4a7fa5",marginBottom:"10px",textAlign:"center"}}>
+                {ALL_TEAMS[batOrder[0]]?.flag} {ALL_TEAMS[batOrder[0]]?.name} — enforce follow-on?
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+                <button onClick={enforceFollowOn} className="btn"
+                  style={{width:"100%",padding:"13px",borderRadius:"13px",fontWeight:700,fontSize:"13px",cursor:"pointer",background:"linear-gradient(135deg,rgba(255,140,0,.25),rgba(255,68,68,.15))",color:"#ff9a3c",border:"1px solid rgba(255,140,0,.4)"}}>
+                  ⚡ Enforce Follow-On<br/>
+                  <span style={{fontSize:"10px",fontWeight:400,color:"#cc7a30"}}>{ALL_TEAMS[batOrder[1]]?.name} bats again immediately</span>
+                </button>
+                <button onClick={()=>{setShowFollowOnModal(false);advanceInnings(scores,innIdx,batTeamCode);}} className="btn"
+                  style={{width:"100%",padding:"13px",borderRadius:"13px",fontWeight:700,fontSize:"13px",cursor:"pointer",background:"rgba(59,158,255,.1)",color:"#3b9eff",border:"1px solid rgba(59,158,255,.3)"}}>
+                  🏏 Waive Follow-On<br/>
+                  <span style={{fontSize:"10px",fontWeight:400,color:"#2a6fa8"}}>{ALL_TEAMS[batOrder[0]]?.name} bats 3rd innings</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── END OF MATCH MODAL ── */}
+      {showEndModal&&(
+        <div style={{position:"fixed",inset:0,zIndex:60,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px",background:"rgba(0,0,0,.9)",backdropFilter:"blur(8px)"}}>
+          <div style={{width:"100%",maxWidth:"380px",borderRadius:"24px",overflow:"hidden",background:"#0a1525",border:"1px solid rgba(59,158,255,.3)",boxShadow:"0 20px 60px rgba(0,0,0,.8)"}} className="si">
+            {/* Trophy header */}
+            <div style={{padding:"24px 20px 16px",textAlign:"center",background:"linear-gradient(135deg,rgba(27,115,232,.15),rgba(100,200,120,.08))"}}>
+              <div style={{fontSize:"52px",marginBottom:"8px"}}>🏆</div>
+              <div style={{fontWeight:900,fontSize:"20px",color:"#e8f4f8",marginBottom:"4px"}}>{matchResult}</div>
+              <div style={{fontSize:"12px",color:"#4a7fa5"}}>{ALL_TEAMS[teamA].flag} {ALL_TEAMS[teamA].name} vs {ALL_TEAMS[teamB].flag} {ALL_TEAMS[teamB].name}</div>
+              <div style={{fontSize:"11px",color:"#3a6a8a",marginTop:"2px"}}>{format} Match</div>
+            </div>
+            {/* Scorecards summary */}
+            <div style={{padding:"14px 16px"}}>
+              <div style={{fontSize:"11px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",color:"#4a7fa5",marginBottom:"8px"}}>Match Summary</div>
+              {Array.from({length:totalInnings}).map((_,i)=>{
+                const bc=batOrder[i];if(!bc)return null;
+                const s=scores[i],t=ALL_TEAMS[bc];
+                return(
+                  <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 10px",borderRadius:"10px",marginBottom:"5px",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:"7px"}}><span style={{fontSize:"18px"}}>{t.flag}</span><div><div style={{fontSize:"12px",fontWeight:600}}>{bc}</div><div style={{fontSize:"10px",color:"#4a7fa5"}}>Innings {i+1}</div></div></div>
+                    <div style={{textAlign:"right",fontFamily:"monospace"}}><span style={{fontWeight:700,fontSize:"16px"}}>{s.runs}</span><span style={{color:"#4a7fa5",fontSize:"12px"}}>/{s.wickets}</span><div style={{fontSize:"10px",color:"#4a7fa5"}}>{s.overs}.{s.balls} ov</div></div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Action buttons */}
+            <div style={{padding:"0 16px 18px",display:"flex",flexDirection:"column",gap:"8px"}}>
+              <button onClick={goHome} className="btn"
+                style={{width:"100%",padding:"14px",borderRadius:"14px",fontWeight:700,fontSize:"14px",cursor:"pointer",background:"linear-gradient(135deg,#1a73e8,#0d47a1)",color:"#fff",border:"none",boxShadow:"0 4px 16px rgba(27,115,232,.4)"}}>
+                🏠 Return to Home
+              </button>
+              <button onClick={()=>setShowEndModal(false)} style={{width:"100%",padding:"11px",borderRadius:"12px",fontSize:"13px",cursor:"pointer",background:"rgba(255,255,255,.05)",color:"#7ab3d4",border:"1px solid rgba(255,255,255,.1)"}}>
+                View Full Scorecard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(<CricketScorer />);
+</script>
+</body>
+</html>

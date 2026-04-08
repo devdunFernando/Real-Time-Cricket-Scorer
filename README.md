@@ -21,7 +21,7 @@ Generate a complete overview of match results and player performances.
 ---
 
 # 🛠️ Technologies Used
-Frontend: HTML, CSS, JavaScript
+HTML, CSS, JavaScript
 
 ---
 
